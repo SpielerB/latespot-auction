@@ -116,6 +116,7 @@ contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721Enumer
     }
 
     function buyPhaseTwo(bytes memory signature) public payable {
+        require(_whitelistMap[_msgSender()], "Address is not whitelisted");
         _buy(signature, 2, phaseTwoPrice, phaseTwoData);
     }
 
@@ -144,25 +145,13 @@ contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721Enumer
         _buy(signature, 3, phaseThreePrice, phaseThreeData);
     }
 
-    function bytes32ToString(bytes32 _bytes32) public pure returns (string memory) {
-        uint8 i = 0;
-        while (i < 32 && _bytes32[i] != 0) {
-            i++;
-        }
-        bytes memory bytesArray = new bytes(i);
-        for (i = 0; i < 32 && _bytes32[i] != 0; i++) {
-            bytesArray[i] = _bytes32[i];
-        }
-        return string(bytesArray);
-    }
-
     /*
         General Functions
     */
     function currentPhase() public view returns (uint8) {
         if (isActivePhase(phaseOneData)) return 1;
         if (isActivePhase(phaseTwoData)) return 2;
-        // TODO: Add phase 3
+        if (isActivePhase(phaseThreeData)) return 3;
         return 0;
     }
 
@@ -179,11 +168,10 @@ contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721Enumer
     }
 
     function _buy(bytes memory signature, uint8 phase_, uint256 phasePrice_, PhaseData storage data_) internal {
-        console.log("Price is %d", phasePrice_);
         // Basic phase check and ticket check
         require(data_.active, "Phase is not active");
         require(data_.ticketCount < data_.ticketSupply, "No tickets left for sale in the current phase");
-        require(data_.ticketMap[_msgSender()] <= data_.ticketsPerWallet, "Maximum tickets already reached for this wallet for current phase");
+        require(data_.ticketMap[_msgSender()] < data_.ticketsPerWallet, "Maximum tickets already reached for this wallet for current phase");
 
         // Signature check
         bytes32 hash = keccak256(abi.encode(_msgSender(), msg.value, phase_)).toEthSignedMessageHash();
@@ -204,7 +192,8 @@ contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721Enumer
         uint8 newTicketCount = uint8(ticketsToBuy + currentTickets);
 
         data_.ticketCount += ticketsToBuy;
-        data_.ticketMap[_msgSender()] = _ticketHolderMap[_msgSender()] = newTicketCount;
+        _ticketHolderMap[_msgSender()] += uint8(ticketsToBuy);
+        data_.ticketMap[_msgSender()] = newTicketCount;
         if (currentTickets == 0) {
             _ticketHolders.push(_msgSender());
         }
