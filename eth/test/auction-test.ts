@@ -1,8 +1,9 @@
 import {expect} from 'chai';
 import {ethers} from 'hardhat';
-import {BigNumber, BigNumberish, Contract, ContractReceipt, ContractTransaction} from 'ethers';
+import {BigNumber, BigNumberish, Contract, ContractReceipt, ContractTransaction, Wallet} from 'ethers';
 import {describe} from 'mocha';
 import {createSignature, deployProxy, getBalance, mineBlocks, setBalance} from './helper';
+import crypto from 'crypto';
 
 interface InitParams {
     tokenName: string;
@@ -67,18 +68,24 @@ const deployAuction = async (overrides?: Partial<InitParams>) => {
 };
 
 describe('Auction Contract', async function () {
+
+    const wrapParam = <T>(value: T | undefined, fallback: T) => {
+        if (value === undefined) return fallback;
+        return value;
+    }
+
     let contract: Contract;
     const whitelistedSigners = (await ethers.getSigners()).filter((_, i) => i % 2 === 0);
     const nonWhitelistedSigners = (await ethers.getSigners()).filter((_, i) => i % 2 === 1);
 
     const startPhaseOne = async (params?: Partial<PhaseOneParams>) => {
         const tx: ContractTransaction = await contract.startPhaseOne(
-            params?.startPrice || phaseOneParams.startPrice,
-            params?.priceStep || phaseOneParams.priceStep,
-            params?.blocksPerPriceStep || phaseOneParams.blocksPerPriceStep,
-            params?.floorPrice || phaseOneParams.floorPrice,
-            params?.ticketsPerWallet || phaseOneParams.ticketsPerWallet,
-            params?.ticketSupply || phaseOneParams.ticketSupply
+            wrapParam(params?.startPrice, phaseOneParams.startPrice),
+            wrapParam(params?.priceStep, phaseOneParams.priceStep),
+            wrapParam(params?.blocksPerPriceStep, phaseOneParams.blocksPerPriceStep),
+            wrapParam(params?.floorPrice, phaseOneParams.floorPrice),
+            wrapParam(params?.ticketsPerWallet, phaseOneParams.ticketsPerWallet),
+            wrapParam(params?.ticketSupply, phaseOneParams.ticketSupply)
         );
         await tx.wait(); // Wait for the block to be mined to ensure that the transaction has either been rejected or went through
         return tx;
@@ -98,9 +105,9 @@ describe('Auction Contract', async function () {
 
     const startPhaseTwo = async (params?: Partial<PhaseTwoParams>) => {
         const tx: ContractTransaction = await contract.startPhaseTwo(
-            params?.price || phaseTwoParams.price,
-            params?.ticketSupply || phaseTwoParams.ticketSupply,
-            params?.ticketsPerWallet || phaseTwoParams.ticketsPerWallet
+            wrapParam(params?.price, phaseTwoParams.price),
+            wrapParam(params?.ticketSupply, phaseTwoParams.ticketSupply),
+            wrapParam(params?.ticketsPerWallet, phaseTwoParams.ticketsPerWallet)
         );
         await tx.wait(); // Wait for the block to be mined to ensure that the transaction has either been rejected or went through
         return tx;
@@ -126,8 +133,8 @@ describe('Auction Contract', async function () {
 
     const startPhaseThree = async (params?: Partial<PhaseThreeParams>) => {
         const tx: ContractTransaction = await contract.startPhaseThree(
-            params?.price || phaseThreeParams.price,
-            params?.ticketsPerWallet || phaseThreeParams.ticketsPerWallet
+            wrapParam(params?.price, phaseThreeParams.price),
+            wrapParam(params?.ticketsPerWallet, phaseThreeParams.ticketsPerWallet)
         );
         await tx.wait(); // Wait for the block to be mined to ensure that the transaction has either been rejected or went through
         return tx;
@@ -158,7 +165,7 @@ describe('Auction Contract', async function () {
         it('Should set the correct total ticket supply', async () => {
             const totalTicketSupply = 12000;
             contract = await deployAuction({tokenSupply: totalTicketSupply});
-            expect(await contract.totalTicketSupply()).to.equal(totalTicketSupply);
+            expect(await contract.totalSupply()).to.equal(totalTicketSupply);
         });
 
         it('Should have added the whitelisted addresses', async () => {
@@ -186,10 +193,13 @@ describe('Auction Contract', async function () {
             });
 
             it('Should return correct value for phase 2 active', async () => {
+                await startPhaseOne({ticketSupply: 0});
                 await startPhaseTwo();
                 expect(await contract.currentPhase()).to.equal(2);
             });
             it('Should return correct value for phase 3 active', async () => {
+                await startPhaseOne({ticketSupply: 0});
+                await startPhaseTwo({ticketSupply: 0});
                 await startPhaseThree();
                 expect(await contract.currentPhase()).to.equal(3);
             });
@@ -201,15 +211,22 @@ describe('Auction Contract', async function () {
         describe('getTickets', async () => {
 
             it('Should return correct value', async () => {
-                await startPhaseOne();
+                await startPhaseOne({ticketSupply: 3});
                 await buyPhaseOne(phaseOneParams.startPrice);
                 expect(await contract.getTickets()).to.equal(1);
                 await buyPhaseOne(phaseOneParams.startPrice.mul(2));
                 expect(await contract.getTickets()).to.equal(3);
-                // TODO: Add other phases
+
+                await startPhaseTwo({ticketSupply: 2});
+                await buyPhaseTwo(phaseTwoParams.price.mul(2));
+                expect(await contract.getTickets()).to.equal(5);
+
+                await startPhaseThree();
+                await buyPhaseThree(phaseThreeParams.price);
+                expect(await contract.getTickets()).to.equal(6);
             });
         })
-    }); // TODO: Implement
+    });
 
     describe('Owner Functions', async () => {
         describe('withdraw', function () {
@@ -233,20 +250,56 @@ describe('Auction Contract', async function () {
                 await setBalance(contract.address, contractStartBalance);
 
                 contract = contract.connect(notOwner);
-                await expect(contract.withdraw()).to.be.revertedWith('Ownable: caller is not the owner');
+                await expect(contract.withdraw()).to.be.revertedWith('');
 
                 await expect(await getBalance(contract.address)).to.equal(contractStartBalance);
             });
         });
         describe('mintAndDistribute', function () {
+            const wallets: Wallet[] = [];
+            for (let i = 0; i < 113; ++i) {
+                const id = crypto.randomBytes(32).toString('hex');
+                const privateKey = "0x" + id;
+                const wallet = new ethers.Wallet(privateKey, ethers.provider);
+                wallets.push(wallet);
+            }
 
             it('Should mint the same amount of tokens as the wallet has tickets', async () => {
+                const [owner] = await ethers.getSigners();
+                await startPhaseOne();
+                for (const wallet of wallets) {
+                    await setBalance(wallet.address, ethers.utils.parseEther("10000"));
+                    contract = contract.connect(wallet);
+                    const price: BigNumber = await contract.nextBlockPricePhaseOne();
+                    const count = Math.ceil(Math.random() * 5);
+                    await buyPhaseOne(price.mul(count));
+                }
 
-            });
+                contract = contract.connect(owner);
+
+                const ticketHolders = await contract.ticketHolderCount();
+
+                const batchSize = 100;
+                const batches = Math.ceil(ticketHolders / batchSize);
+
+                for (let i = 0; i < batches; ++i) {
+                    await contract.mintAndDistribute(batchSize);
+                }
+                for (const wallet of wallets) {
+                    await setBalance(wallet.address, ethers.utils.parseEther("10000"));
+                    contract = contract.connect(wallet);
+                    expect(await contract.getTickets()).to.equal(await contract.balanceOf(wallet.address));
+                }
+            }).timeout(2 << 31);
 
 
             it('Should allow for only the owner to mint and distribute', async () => {
+                const [, notOwner] = await ethers.getSigners();
+                await expect(contract.mintAndDistribute(100)).to.not.be.revertedWith('');
 
+                contract = contract.connect(notOwner);
+
+                await expect(contract.mintAndDistribute(100)).to.be.revertedWith('');
             });
         });
     });
@@ -261,14 +314,14 @@ describe('Auction Contract', async function () {
             });
 
             it('Should allow for the owner to start phase 1', async () => {
-                expect(startPhaseOne()).to.not.be.revertedWith('Ownable: caller is not the owner');
+                expect(startPhaseOne()).to.not.be.revertedWith('');
             });
 
             it('Should not allow for non owner wallets to start phase 1', async () => {
                 const [, notOwner] = await ethers.getSigners();
                 contract = contract.connect(notOwner);
 
-                expect(startPhaseOne()).to.be.revertedWith('Ownable: caller is not the owner');
+                expect(startPhaseOne()).to.be.revertedWith('');
             });
 
             it('Should set the correct values', async () => {
@@ -412,32 +465,32 @@ describe('Auction Contract', async function () {
     });
 
     describe('Phase 2 Functions', async () => {
+
         describe('startPhaseTwo', async () => {
 
             it('Should mark phase 2 as active', async () => {
+                await startPhaseOne({ticketSupply: 0});
                 expect((await contract.phaseTwoData()).active).to.be.false;
                 await startPhaseTwo();
                 expect((await contract.phaseTwoData()).active).to.be.true;
             });
 
-            it('Should remove the phase 1 active mark', async () => {
-                await startPhaseOne();
-                await startPhaseTwo();
-                expect((await contract.phaseOneData()).active).to.be.false;
-            });
-
             it('Should allow for the owner to start phase 2', async () => {
-                await expect(startPhaseTwo()).to.not.be.revertedWith('Ownable: caller is not the owner');
+                await startPhaseOne({ticketSupply: 0});
+                await expect(startPhaseTwo()).to.not.be.revertedWith('');
             });
 
             it('Should not allow for non owner wallets to start phase 2', async () => {
                 const [, notOwner] = await ethers.getSigners();
+                await startPhaseOne({ticketSupply: 0});
+
                 contract = contract.connect(notOwner);
 
-                await expect(startPhaseTwo()).to.be.revertedWith('Ownable: caller is not the owner');
+                await expect(startPhaseTwo()).to.be.revertedWith('');
             });
 
             it('Should set the correct values', async () => {
+                await startPhaseOne({ticketSupply: 0});
                 await startPhaseTwo();
                 const data = await contract.phaseTwoData();
 
@@ -452,12 +505,14 @@ describe('Auction Contract', async function () {
         describe('buyPhaseTwo', async () => {
 
             it('Should only the purchase of tickets if phase 2 has been started', async () => {
+                await startPhaseOne({ticketSupply: 0});
                 await expect(buyPhaseTwo(phaseTwoParams.price)).to.be.revertedWith('Phase is not active');
                 await startPhaseTwo();
                 await expect(buyPhaseTwo(phaseTwoParams.price)).to.not.be.revertedWith('Phase is not active');
             });
 
             it('Should not allow for more than max tickets per wallet', async () => {
+                await startPhaseOne({ticketSupply: 0});
                 await startPhaseTwo();
                 await expect(buyPhaseTwo(phaseTwoParams.price.mul(phaseTwoParams.ticketsPerWallet + 1))).to.be.revertedWith('Total ticket count is higher than the max allowed tickets per wallet');
                 await buyPhaseTwo(phaseTwoParams.price.mul(phaseTwoParams.ticketsPerWallet));
@@ -465,23 +520,27 @@ describe('Auction Contract', async function () {
             });
 
             it('Should not allow for payments more than the current price', async () => {
+                await startPhaseOne({ticketSupply: 0});
                 await startPhaseTwo();
                 await expect(buyPhaseTwo(phaseTwoParams.price.add(1))).to.be.revertedWith('Value has to be a multiple of the price for the current block');
             });
 
             it('Should not allow for payments less than the current price', async () => {
+                await startPhaseOne({ticketSupply: 0});
                 await startPhaseTwo();
                 await expect(buyPhaseTwo(phaseTwoParams.price.sub(1))).to.be.revertedWith('Value has to be a multiple of the price for the current block');
                 await expect(buyPhaseTwo(0)).to.be.revertedWith('Value has to be greater than 0');
             });
 
             it('Should not allow the purchase of tickets if phase 2 has been sold out', async () => {
+                await startPhaseOne({ticketSupply: 0});
                 await startPhaseTwo({ticketSupply: 1});
                 await buyPhaseTwo(phaseTwoParams.price);
                 await expect(buyPhaseTwo(phaseTwoParams.price)).to.be.revertedWith('No tickets left for sale in the current phase');
             });
 
             it('Should not allow for non whitelisted wallets to buy tickets', async () => {
+                await startPhaseOne({ticketSupply: 0});
                 await startPhaseTwo();
                 for (const signer of nonWhitelistedSigners) {
                     contract = contract.connect(signer);
@@ -490,6 +549,7 @@ describe('Auction Contract', async function () {
             });
 
             it('Should allow for whitelisted wallets to buy tickets', async () => {
+                await startPhaseOne({ticketSupply: 0});
                 await startPhaseTwo();
                 for (const signer of whitelistedSigners) {
                     contract = contract.connect(signer);
@@ -499,6 +559,7 @@ describe('Auction Contract', async function () {
 
             for (let i = 1; i <= phaseTwoParams.ticketsPerWallet; ++i) {
                 it(`Should allow for a wallet to buy ${i} tickets`, async () => {
+                    await startPhaseOne({ticketSupply: 0});
                     await startPhaseTwo();
                     await expect(buyPhaseTwo(phaseTwoParams.price.mul(i))).to.not.be.revertedWith('');
                     expect(await contract.getTickets()).to.equal(i);
@@ -508,6 +569,7 @@ describe('Auction Contract', async function () {
             it('Should not allow invalid signatures', async () => {
                 const [wrongSigner] = await ethers.getSigners();
 
+                await startPhaseOne({ticketSupply: 0});
                 await startPhaseTwo();
 
                 // Wrong signer
@@ -522,56 +584,128 @@ describe('Auction Contract', async function () {
 
         describe('stopPhaseTwo', async () => {
 
-            it('Should remove the phase 2 active mark', async () => {
+            it('Should mark phase 2 as stopped', async () => {
+                await startPhaseOne({ticketSupply: 0});
                 await startPhaseTwo();
                 await stopPhaseTwo();
-                expect((await contract.phaseOneData()).active).to.be.false;
+                expect((await contract.phaseTwoData()).stopped).to.be.true;
             });
 
             it('Should only allow for the owner to stop phase 2', async () => {
                 const [owner, notOwner] = await ethers.getSigners();
+                await startPhaseOne({ticketSupply: 0});
                 await startPhaseTwo();
                 contract = contract.connect(notOwner);
-                await expect(contract.stopPhaseTwo()).to.be.revertedWith('Ownable: caller is not the owner');
+                await expect(contract.stopPhaseTwo()).to.be.revertedWith('');
                 contract = contract.connect(owner);
-                await expect(contract.stopPhaseTwo()).to.not.be.revertedWith('Ownable: caller is not the owner');
+                await expect(contract.stopPhaseTwo()).to.not.be.revertedWith('');
             })
 
         });
     });
 
     describe('Phase 3 Functions', async () => {
+
         describe('startPhaseThree', async () => {
+
             it('Should mark phase 3 as active', async () => {
             });
+
             it('Should allow for the owner to start phase 3', async () => {
             })
+
             it('Should not allow for non owner wallets to start phase 3', async () => {
+                const [, notOwner] = await ethers.getSigners();
+                await startPhaseOne({ticketSupply: 0});
+                await startPhaseTwo({ticketSupply: 0});
+
+                contract = contract.connect(notOwner);
+
+                await expect(startPhaseThree()).to.be.revertedWith('');
             })
+
             it('Should set the correct values', async () => {
+                const tokenSupply = 913;
+                contract = await deployAuction({tokenSupply});
+                await startPhaseOne({ticketSupply: 0});
+                await startPhaseTwo({ticketSupply: 0});
+                await startPhaseThree();
+                const data = await contract.phaseThreeData();
+
+                expect(await contract.phaseThreePrice()).to.equal(phaseThreeParams.price);
+                expect(data.active).to.be.true;
+                expect(data.ticketSupply).to.equal(tokenSupply);
+                expect(data.ticketsPerWallet).to.equal(phaseThreeParams.ticketsPerWallet);
             })
-        }); // TODO: Implement
+
+        });
+
         describe('buyPhaseThree', async () => {
             it('Should not allow the purchase of tickets if phase 3 has not been started', async () => {
+                await startPhaseOne({ticketSupply: 0});
+                await startPhaseTwo({ticketSupply: 0});
+
+                await expect(buyPhaseThree(phaseThreeParams.price)).to.be.revertedWith('Phase is not active');
+                await startPhaseThree();
+                await expect(buyPhaseThree(phaseThreeParams.price)).to.not.be.revertedWith('Phase is not active');
             });
-            it('Should not allow for more than 1 tickets per wallet', async () => {
+            it('Should not allow for more than the max amount tickets per wallet', async () => {
+                await startPhaseOne({ticketSupply: 0});
+                await startPhaseTwo({ticketSupply: 0});
+                await startPhaseThree();
+
+                await expect(buyPhaseThree(phaseThreeParams.price.mul(phaseThreeParams.ticketsPerWallet + 1))).to.be.revertedWith('Total ticket count is higher than the max allowed tickets per wallet');
+
+                await buyPhaseThree(phaseThreeParams.price.mul(phaseThreeParams.ticketsPerWallet));
+                await expect(buyPhaseThree(phaseThreeParams.price)).to.be.revertedWith('Maximum tickets already reached for this wallet for current phase');
             });
+
             it('Should not allow for payments more than the current price', async () => {
+                await startPhaseOne({ticketSupply: 0});
+                await startPhaseTwo({ticketSupply: 0});
+                await startPhaseThree();
+
+                await expect(buyPhaseThree(phaseThreeParams.price.add(1))).to.be.revertedWith('Value has to be a multiple of the price for the current block');
             });
+
             it('Should not allow for payments less than the current price', async () => {
+                await startPhaseOne({ticketSupply: 0});
+                await startPhaseTwo({ticketSupply: 0});
+                await startPhaseThree();
+
+                await expect(buyPhaseThree(phaseThreeParams.price.sub(1))).to.be.revertedWith('Value has to be a multiple of the price for the current block');
+                await expect(buyPhaseThree(0)).to.be.revertedWith('Value has to be greater than 0');
             });
+
             it('Should not allow the purchase of tickets if phase 3 has been sold out', async () => {
+                const [, other1, other2] = await ethers.getSigners();
+                contract = await deployAuction({tokenSupply: 1})
+                await startPhaseOne({ticketSupply: 0})
+                await startPhaseTwo({ticketSupply: 0})
+                await startPhaseThree();
+
+                contract = contract.connect(other1);
+                await buyPhaseThree(phaseThreeParams.price);
+
+                contract = contract.connect(other2);
+                await expect(buyPhaseThree(phaseThreeParams.price)).to.be.revertedWith('No tickets left for sale in the current phase');
             });
-            it('Should not allow for non whitelisted wallets to buy tickets', async () => {
-            });
-            it('Should allow for whitelisted wallets to buy tickets', async () => {
-            });
-            it('Should allow for a wallet to buy 1 ticket', async () => {
-            });
+
+            for (let i = 1; i <= phaseThreeParams.ticketsPerWallet; ++i) {
+                it(`Should allow for a wallet to buy ${i} ticket`, async () => {
+                    await startPhaseOne({ticketSupply: 0});
+                    await startPhaseTwo({ticketSupply: 0});
+                    await startPhaseThree();
+
+                    await expect(buyPhaseThree(phaseThreeParams.price.mul(i))).to.not.be.revertedWith('');
+                    expect(await contract.getTickets()).to.equal(i);
+                });
+            }
 
             it('Should not allow invalid signatures', async () => {
                 const [wrongSigner] = await ethers.getSigners();
-
+                await startPhaseOne({ticketSupply: 0});
+                await startPhaseTwo({ticketSupply: 0});
                 await startPhaseThree();
 
                 // Wrong signer
@@ -581,6 +715,6 @@ describe('Auction Contract', async function () {
                 // Wrong data
                 await expect(buyPhaseThree(phaseOneParams.startPrice, await createSignature(address, phaseOneParams.startPrice.mul(2), 1))).to.be.revertedWith('Invalid signature');
             });
-        }); // TODO: Implement
+        });
     });
 });
