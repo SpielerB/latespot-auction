@@ -5,14 +5,13 @@ import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721RoyaltyUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "hardhat/console.sol";
 
 /// @title 3 Phase auction and minting for the latespot NFT project
-contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721EnumerableUpgradeable, OwnableUpgradeable {
+contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721RoyaltyUpgradeable, OwnableUpgradeable {
     using MathUpgradeable for uint;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
@@ -21,33 +20,40 @@ contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721Enumer
 
     struct PhaseData {
         bool active;
+        bool stopped;
         uint256 ticketSupply;
         uint256 ticketCount;
-        uint8 ticketsPerWallet;
-        mapping(address => uint8) ticketMap;
+        uint256 ticketsPerWallet;
+        mapping(address => uint256) ticketMap;
     }
 
     /*
         Initialisation
     */
-    uint256 public totalTicketSupply;
+    uint256 public totalSupply;
+    bool public hasStarted;
     address public signatureAddress;
     address[] private _ticketHolders;
-    mapping(address => uint8) private _ticketHolderMap;
+    mapping(address => uint256) private _ticketHolderMap;
     mapping(address => bool) private _whitelistMap;
 
-    function initialize(string memory tokenName_, string memory tokenSymbol_, uint256 totalTicketSupply_, address signatureAddress_, address[] memory whitelistArray_) public initializer {
+    function initialize(string memory tokenName_, string memory tokenSymbol_, uint256 totalTicketSupply_, address signatureAddress_, string memory baseURL_, address[] memory whitelistArray_) public initializer {
         __ERC721_init(tokenName_, tokenSymbol_);
         __ERC721URIStorage_init();
+        __ERC721Royalty_init();
         __Ownable_init();
 
-        totalTicketSupply = totalTicketSupply_;
+        totalSupply = totalTicketSupply_;
         signatureAddress = signatureAddress_;
 
         uint256 whitelistLength = whitelistArray_.length;
         for (uint256 i = 0; i < whitelistLength; ++i) {
             _whitelistMap[whitelistArray_[i]] = true;
         }
+
+        __baseURI = baseURL_;
+
+        _setDefaultRoyalty(owner(), _feeDenominator() / 10); // 10% royalties
     }
 
     /*
@@ -63,9 +69,11 @@ contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721Enumer
     uint256 public phaseOneStartBlock;
     uint256 private _phaseOneMaxReduction;
 
-    mapping(address => uint8) private _phaseOneTickets;
+    mapping(address => uint256) private _phaseOneTickets;
 
-    function startPhaseOne(uint256 startPrice_, uint256 priceStep_, uint256 blocksPerStep_, uint256 floorPrice_, uint8 ticketsPerWallet_, uint256 ticketSupply_) public onlyOwner {
+    function startPhaseOne(uint256 startPrice_, uint256 priceStep_, uint256 blocksPerStep_, uint256 floorPrice_, uint256 ticketsPerWallet_, uint256 ticketSupply_) public onlyOwner {
+        require(!phaseOneData.active, "Phase one has already been started");
+        require(ticketSupply_ <= totalSupply, "The ticket supply may not be larger than the total supply");
         phaseOneData.active = true;
         phaseOneData.ticketSupply = ticketSupply_;
         phaseOneData.ticketsPerWallet = ticketsPerWallet_;
@@ -75,13 +83,14 @@ contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721Enumer
         phaseOneBlocksPerStep = blocksPerStep_;
         phaseOneFloorPrice = floorPrice_;
         phaseOneStartBlock = block.number;
+        hasStarted = true;
 
         _phaseOneMaxReduction = startPrice_ - floorPrice_;
     }
 
-    function blockPricePhaseOne(uint256 block) internal view returns (uint256) {
+    function blockPricePhaseOne(uint256 blockNumber) internal view returns (uint256) {
         if (!isActivePhase(phaseOneData)) return phaseOneStartPrice;
-        uint256 elapsed = block - phaseOneStartBlock;
+        uint256 elapsed = blockNumber - phaseOneStartBlock;
         uint256 reduction = (elapsed / phaseOneBlocksPerStep) * phaseOnePriceStep;
         if (reduction > _phaseOneMaxReduction) return phaseOneFloorPrice;
         return phaseOneStartPrice - reduction;
@@ -103,14 +112,17 @@ contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721Enumer
     PhaseData public phaseTwoData;
     uint256 public phaseTwoPrice;
 
-    mapping(address => uint8) private _phaseTwoTickets;
+    mapping(address => uint256) private _phaseTwoTickets;
 
-    function startPhaseTwo(uint256 price_, uint256 ticketSupply_, uint8 ticketsPerWallet_) public onlyOwner {
-        phaseOneData.active = false;
+    function startPhaseTwo(uint256 price_, uint256 ticketSupply_, uint256 ticketsPerWallet_) public onlyOwner {
+        require(phaseOneData.active, "Phase two may only be started after phase one");
+        require(!isActivePhase(phaseOneData), "Phase two may not be started while phase one is still ongoing");
+        require(ticketSupply_ + phaseOneData.ticketSupply <= totalSupply, "The ticket supply of phase one + phase two may not be bigger than the total supply");
 
         phaseTwoData.active = true;
         phaseTwoData.ticketSupply = ticketSupply_;
         phaseTwoData.ticketsPerWallet = ticketsPerWallet_;
+        hasStarted = true;
 
         phaseTwoPrice = price_;
     }
@@ -121,24 +133,27 @@ contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721Enumer
     }
 
     function stopPhaseTwo() public onlyOwner {
-        phaseTwoData.active = false;
+        phaseTwoData.stopped = true;
     }
 
     /*
         Phase 3 - Clearance sale
         The clearance sale only happens if there are tickets remaining after phase 2
     */
-
-
     PhaseData public phaseThreeData;
     uint256 public phaseThreePrice;
 
-    mapping(address => uint8) private _phaseThreeTickets;
+    mapping(address => uint256) private _phaseThreeTickets;
 
-    function startPhaseThree(uint256 price_, uint8 ticketsPerWallet_) public onlyOwner {
+    function startPhaseThree(uint256 price_, uint256 ticketsPerWallet_) public onlyOwner {
+        require(phaseTwoData.active, "Phase three may only be started after phase two");
+        require(!isActivePhase(phaseTwoData), "Phase three may not be started while phase two is still ongoing");
         phaseThreeData.active = true;
-        phaseThreeData.ticketSupply = totalTicketSupply - phaseOneData.ticketCount - phaseTwoData.ticketCount;
+        phaseThreeData.ticketSupply = totalSupply - phaseOneData.ticketCount - phaseTwoData.ticketCount;
         phaseThreeData.ticketsPerWallet = ticketsPerWallet_;
+        hasStarted = true;
+
+        phaseThreePrice = price_;
     }
 
     function buyPhaseThree(bytes memory signature) public payable {
@@ -148,7 +163,8 @@ contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721Enumer
     /*
         General Functions
     */
-    function currentPhase() public view returns (uint8) {
+
+    function currentPhase() public view returns (uint256) {
         if (isActivePhase(phaseOneData)) return 1;
         if (isActivePhase(phaseTwoData)) return 2;
         if (isActivePhase(phaseThreeData)) return 3;
@@ -156,18 +172,33 @@ contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721Enumer
     }
 
     function isActivePhase(PhaseData storage data) internal view returns (bool) {
-        return data.active && data.ticketCount < data.ticketSupply;
+        return data.active && !data.stopped && data.ticketCount < data.ticketSupply;
     }
 
     function whitelisted() public view returns (bool) {
         return _whitelistMap[_msgSender()];
     }
 
-    function getTickets() public view returns (uint8) {
+    function getTickets() public view returns (uint256) {
         return _ticketHolderMap[_msgSender()];
     }
 
-    function _buy(bytes memory signature, uint8 phase_, uint256 phasePrice_, PhaseData storage data_) internal {
+    function getPhaseTickets() public view returns (uint256) {
+        if (isActivePhase(phaseOneData)) return phaseOneData.ticketMap[_msgSender()];
+        if (isActivePhase(phaseTwoData)) return phaseTwoData.ticketMap[_msgSender()];
+        if (isActivePhase(phaseThreeData)) return phaseThreeData.ticketMap[_msgSender()];
+        return 0;
+    }
+
+    function ticketCount() public view returns (uint256) {
+        return phaseOneData.ticketCount + phaseTwoData.ticketCount + phaseThreeData.ticketCount;
+    }
+
+    function ticketHolderCount() public view returns (uint256) {
+        return _ticketHolders.length;
+    }
+
+    function _buy(bytes memory signature, uint256 phase_, uint256 phasePrice_, PhaseData storage data_) internal {
         // Basic phase check and ticket check
         require(data_.active, "Phase is not active");
         require(data_.ticketCount < data_.ticketSupply, "No tickets left for sale in the current phase");
@@ -189,47 +220,81 @@ contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721Enumer
         require(ticketsToBuy + currentTickets <= data_.ticketsPerWallet, "Total ticket count is higher than the max allowed tickets per wallet");
         require(data_.ticketCount + ticketsToBuy <= data_.ticketSupply, "There are not enough tickets left in phase one");
 
-        uint8 newTicketCount = uint8(ticketsToBuy + currentTickets);
+        uint256 newTicketCount = uint256(ticketsToBuy + currentTickets);
 
         data_.ticketCount += ticketsToBuy;
-        _ticketHolderMap[_msgSender()] += uint8(ticketsToBuy);
+        _ticketHolderMap[_msgSender()] += uint256(ticketsToBuy);
         data_.ticketMap[_msgSender()] = newTicketCount;
         if (currentTickets == 0) {
             _ticketHolders.push(_msgSender());
         }
     }
 
+    string private __baseURI;
+
+    function _baseURI() internal view override returns (string memory) {
+        return __baseURI;
+    }
+
+    function tokenURI(uint256 tokenId) public view override(ERC721Upgradeable, ERC721URIStorageUpgradeable) returns (string memory){
+        if (_revealed) return super.tokenURI(tokenId);
+        return _baseURI();
+    }
+
     /*
         Owner Functions
     */
-    function mintAndDistribute() public onlyOwner {
-        // TODO: Implement
+    CountersUpgradeable.Counter private counter;
+    uint256 private _mintIndex;
+    bool private _revealed;
+
+    function addToWhitelist(address[] memory whitelistArray_) public onlyOwner {
+        uint256 whitelistLength = whitelistArray_.length;
+        for (uint256 i = 0; i < whitelistLength; ++i) {
+            _whitelistMap[whitelistArray_[i]] = true;
+        }
+    }
+
+    function mintAndDistribute(uint256 limit) public onlyOwner {
+        uint256 mintIndex = _mintIndex;
+        uint256 index;
+        while(index < limit && mintIndex < _ticketHolders.length) {
+            address ticketHolder = _ticketHolders[mintIndex];
+            uint256 currentTicketCount = _ticketHolderMap[ticketHolder];
+            for(uint256 i; i < currentTicketCount; ++i) {
+                _safeMint(ticketHolder, counter.current());
+                counter.increment();
+            }
+            ++mintIndex;
+            ++index;
+        }
+        _mintIndex = mintIndex;
+    }
+
+    function reveal(string memory baseUri_) public onlyOwner {
+        _revealed = true;
+        __baseURI = baseUri_;
     }
 
     function withdraw() public onlyOwner {
         uint256 balance = address(this).balance;
-        console.log("%s is withdrawing %d wei", _msgSender(), balance);
-        console.log("owner is %s", owner());
         require(balance > 0, "The contract contains no ETH to withdraw");
         payable(_msgSender()).transfer(address(this).balance);
     }
 
     /*
-        ERC721Enumerable and ERC721URIStorage compatibility functions
+        compatibility functions
     */
-    function _beforeTokenTransfer(address from, address to, uint256 tokenId) internal override(ERC721Upgradeable, ERC721EnumerableUpgradeable) {
-        super._beforeTokenTransfer(from, to, tokenId);
-    }
-
-    function _burn(uint256 tokenId) internal override(ERC721Upgradeable, ERC721URIStorageUpgradeable) {
+    function _burn(uint256 tokenId) internal override(ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721RoyaltyUpgradeable) {
         super._burn(tokenId);
     }
 
-    function tokenURI(uint256 tokenId) public view override(ERC721Upgradeable, ERC721URIStorageUpgradeable) returns (string memory){
-        return super.tokenURI(tokenId);
-    }
 
-    function supportsInterface(bytes4 interfaceId) public view override(ERC721Upgradeable, ERC721EnumerableUpgradeable) returns (bool){
+    /**
+     * @dev See {IERC165-supportsInterface}.
+     */
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721Upgradeable, ERC721RoyaltyUpgradeable) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
+
 }
