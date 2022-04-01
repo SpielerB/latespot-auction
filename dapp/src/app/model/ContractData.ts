@@ -1,16 +1,16 @@
 import {BigNumber} from 'ethers';
 import PhaseData from './PhaseData';
+import WalletData from './WalletData';
 
 export default interface ContractData {
     tokenName: string;
     tokenSymbol: string;
-    phase: BigNumber;
-    phaseData: PhaseData;
-    phaseTickets: BigNumber;
-    tickets: BigNumber;
+    currentPhase: number;
+    phaseData: PhaseData[];
+    currentPhaseData: PhaseData;
     price: BigNumber;
     etherPrice: string;
-    totalCount: BigNumber;
-    totalSupply: BigNumber;
-    whitelisted: boolean;
+    totalCount: number;
+    totalSupply: number;
+    walletData: WalletData;
 }
