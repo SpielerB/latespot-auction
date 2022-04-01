@@ -1,0 +1,11 @@
+.sale-form-error {
+    color: red;
+}
+
+.sale-form-info {
+    color: orangered;
+}
+
+.sale-form-success {
+    color: green;
+}
