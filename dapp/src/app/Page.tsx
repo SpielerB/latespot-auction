@@ -1,7 +1,11 @@
 import React from 'react';
+import ContractData from './model/ContractData';
 
+interface PageProps {
+    contractData: ContractData;
+}
 
-const Page = (props: React.PropsWithChildren<any>) => {
+const Page = (props: React.PropsWithChildren<PageProps>) => {
     return (
         <div className="mint-section wf-section">
             <div className="mint-c">
@@ -12,7 +16,7 @@ const Page = (props: React.PropsWithChildren<any>) => {
                 <div className="mint-info-w">
                     <h3 className="mint-info-h3">Additional Information</h3>
                     <div className="mint-info-p">
-                        You currently have <span className="mint-info-tickets">0</span> tickets.
+                        You currently have <span className="mint-info-tickets">{props.contractData.walletData.tickets}</span> tickets.
                     </div>
                 </div>
                 <div className="mint-info-w">
