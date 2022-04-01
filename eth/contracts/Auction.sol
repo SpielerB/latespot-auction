@@ -5,13 +5,12 @@ import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721URIStorageUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721RoyaltyUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "hardhat/console.sol";
+import "./@rarible/royalties-upgradeable/contracts/RoyaltiesV2Upgradeable.sol";
 
 /// @title 3 Phase auction and minting for the latespot NFT project
-contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721RoyaltyUpgradeable, OwnableUpgradeable {
+contract Auction is ERC721Upgradeable, ERC721RoyaltyUpgradeable, OwnableUpgradeable, RoyaltiesV2Upgradeable {
     using MathUpgradeable for uint;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
@@ -37,23 +36,23 @@ contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721Royalt
     mapping(address => uint256) private _ticketHolderMap;
     mapping(address => bool) private _whitelistMap;
 
-    function initialize(string memory tokenName_, string memory tokenSymbol_, uint256 totalTicketSupply_, address signatureAddress_, string memory baseURL_, address[] memory whitelistArray_) public initializer {
+    string private __baseURI;
+    string private _contractURI;
+
+    uint96 private constant _royaltyPercentageBasisPoints = 1000;
+
+    function initialize(string memory tokenName_, string memory tokenSymbol_, uint256 totalTicketSupply_, address signatureAddress_, string memory baseURI_, string memory contractURI_) public initializer {
         __ERC721_init(tokenName_, tokenSymbol_);
-        __ERC721URIStorage_init();
         __ERC721Royalty_init();
         __Ownable_init();
 
         totalSupply = totalTicketSupply_;
         signatureAddress = signatureAddress_;
+        __baseURI = baseURI_;
+        _contractURI = contractURI_;
 
-        uint256 whitelistLength = whitelistArray_.length;
-        for (uint256 i = 0; i < whitelistLength; ++i) {
-            _whitelistMap[whitelistArray_[i]] = true;
-        }
-
-        __baseURI = baseURL_;
-
-        _setDefaultRoyalty(owner(), _feeDenominator() / 10); // 10% royalties
+        _setDefaultRoyalty(owner(), _royaltyPercentageBasisPoints);
+        // 10% royalties
     }
 
     /*
@@ -222,23 +221,34 @@ contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721Royalt
 
         uint256 newTicketCount = uint256(ticketsToBuy + currentTickets);
 
+        // Add ticket holder to map if no tickets have been bought previously
+        if (_ticketHolderMap[_msgSender()] == 0) {
+            _ticketHolders.push(_msgSender());
+        }
+
         data_.ticketCount += ticketsToBuy;
         _ticketHolderMap[_msgSender()] += uint256(ticketsToBuy);
         data_.ticketMap[_msgSender()] = newTicketCount;
-        if (currentTickets == 0) {
-            _ticketHolders.push(_msgSender());
-        }
     }
 
-    string private __baseURI;
+    function contractURI() public view returns (string memory) {
+        return _contractURI;
+    }
 
     function _baseURI() internal view override returns (string memory) {
         return __baseURI;
     }
 
-    function tokenURI(uint256 tokenId) public view override(ERC721Upgradeable, ERC721URIStorageUpgradeable) returns (string memory){
+    function tokenURI(uint256 tokenId) public view override(ERC721Upgradeable) returns (string memory){
         if (_revealed) return super.tokenURI(tokenId);
         return _baseURI();
+    }
+
+    function getRaribleV2Royalties(uint256) external view returns (LibPart.Part[] memory) {
+        LibPart.Part[] memory royalties = new LibPart.Part[](1);
+        royalties[0].value = _royaltyPercentageBasisPoints;
+        royalties[0].account = payable(owner());
+        return royalties;
     }
 
     /*
@@ -256,22 +266,23 @@ contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721Royalt
     }
 
     function mintAndDistribute(uint256 limit) public onlyOwner {
+        require(_mintIndex < totalSupply, 'All tokens have been minted');
         uint256 mintIndex = _mintIndex;
-        uint256 index;
-        while(index < limit && mintIndex < _ticketHolders.length) {
+        uint256 indexLimit = mintIndex + limit;
+        while (mintIndex < indexLimit && mintIndex < _ticketHolders.length) {
             address ticketHolder = _ticketHolders[mintIndex];
             uint256 currentTicketCount = _ticketHolderMap[ticketHolder];
-            for(uint256 i; i < currentTicketCount; ++i) {
+            for (uint256 i; i < currentTicketCount; ++i) {
                 _safeMint(ticketHolder, counter.current());
                 counter.increment();
             }
             ++mintIndex;
-            ++index;
         }
         _mintIndex = mintIndex;
     }
 
     function reveal(string memory baseUri_) public onlyOwner {
+        require(!_revealed, 'Metadata has already been revealed');
         _revealed = true;
         __baseURI = baseUri_;
     }
@@ -285,7 +296,7 @@ contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721Royalt
     /*
         compatibility functions
     */
-    function _burn(uint256 tokenId) internal override(ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721RoyaltyUpgradeable) {
+    function _burn(uint256 tokenId) internal override(ERC721Upgradeable, ERC721RoyaltyUpgradeable) {
         super._burn(tokenId);
     }
 
@@ -293,7 +304,8 @@ contract Auction is ERC721Upgradeable, ERC721URIStorageUpgradeable, ERC721Royalt
     /**
      * @dev See {IERC165-supportsInterface}.
      */
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721Upgradeable, ERC721RoyaltyUpgradeable) returns (bool) {
+    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721Upgradeable, ERC721RoyaltyUpgradeable, ERC165Upgradeable) returns (bool) {
+        if (interfaceId == LibRoyaltiesV2._INTERFACE_ID_ROYALTIES) return true;
         return super.supportsInterface(interfaceId);
     }
 
