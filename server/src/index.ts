@@ -33,16 +33,20 @@ app.use(morgan('combined')); // Log requests
 let started = false;
 
 app.get('/', async (req, res) => {
-    if (!started && !(started = await contract.hasStarted())) {
+    try {
+        if (started || (started = await contract.hasStarted())) {
+            const data = {
+                started: true,
+                contractAddress,
+                abi
+            };
+            res.send(data);
+        } else {
+            res.send({started: false});
+        }
+    } catch (error) {
         res.send({started: false});
-        return;
     }
-    const data = {
-        started: true,
-        contractAddress,
-        abi
-    };
-    res.send(data);
 });
 
 app.post('/sign', async (req, res) => {
@@ -58,6 +62,28 @@ app.post('/sign', async (req, res) => {
         console.error(error);
         res.sendStatus(400);
     }
+});
+
+app.get('/contract', async (req, res) => {
+    res.send({
+        name: 'Test LTSP Contract',
+        description: 'A Test Contract',
+        image: 'https://i.imgur.com/HTR4tFV.jpeg',
+        external_link: 'https://i.imgur.com/HTR4tFV.jpeg',
+        seller_fee_basis_points: 1000,
+        fee_recipient: await signer.getAddress()
+    });
+});
+
+app.get('/token/:id', async (req, res) => {
+    res.send({
+        "name": "Unrevealed NFT",
+        "description": "The real metadata of this nft has not been revealed yet",
+        "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Question_mark_%28black%29.svg/1200px-Question_mark_%28black%29.svg.png",
+        "attributes": {
+            "hash": "SOMEHASH"
+        }
+    });
 });
 
 app.listen(port, async () => {
