@@ -10,7 +10,7 @@ interface InitParams {
     tokenSymbol: string;
     tokenSupply: number;
     signer: string;
-    whitelist: string[];
+    baseURI: string;
 }
 
 interface PhaseOneParams {
@@ -55,16 +55,11 @@ const phaseThreeParams: PhaseThreeParams = {
 
 const deployAuction = async (overrides?: Partial<InitParams>) => {
     const signers = await ethers.getSigners();
-    let whitelist = overrides?.whitelist;
-    if (whitelist === undefined) {
-        const signers = await ethers.getSigners();
-        whitelist = signers.filter((_, i) => i % 2 === 0).map(a => a.address);
-    }
     return await deployProxy('Auction', overrides?.tokenName || 'LateSpotNFT',
         overrides?.tokenSymbol || 'LSNFT',
         overrides?.tokenSupply || 10000,
         overrides?.signer || signers[signers.length - 1].address,
-        overrides?.whitelist || whitelist);
+        overrides?.baseURI || 'https://api.squirrel.trivetia.org/token/0');
 };
 
 describe('Auction Contract', async function () {
@@ -154,6 +149,8 @@ describe('Auction Contract', async function () {
 
     beforeEach(async () => {
         contract = await deployAuction(); // Redeploy contract for each test to ensure clean state
+        const tx: ContractTransaction = await contract.addToWhitelist(whitelistedSigners.map(s => s.address));
+        await tx.wait();
     })
 
     describe('Initialize', async () => {
@@ -167,21 +164,6 @@ describe('Auction Contract', async function () {
             contract = await deployAuction({tokenSupply: totalTicketSupply});
             expect(await contract.totalSupply()).to.equal(totalTicketSupply);
         });
-
-        it('Should have added the whitelisted addresses', async () => {
-            const signers = await ethers.getSigners();
-            contract = await deployAuction({whitelist: signers.filter((_, i) => i % 2 == 0).map(s => s.address)});
-            for (let i = 0; i < signers.length; ++i) {
-                contract = contract.connect(signers[i]);
-                const expectIt = expect(await contract.whitelisted());
-                if (i % 2 == 0) {
-                    expectIt.to.be.true
-                } else {
-                    expectIt.to.be.false
-                }
-            }
-        });
-
     });
 
     describe('General Functions', async () => {
@@ -211,6 +193,10 @@ describe('Auction Contract', async function () {
         describe('getTickets', async () => {
 
             it('Should return correct value', async () => {
+
+                const whitelist = [(await ethers.getSigners())[0].address];
+                await contract.addToWhitelist(whitelist);
+
                 await startPhaseOne({ticketSupply: 3});
                 await buyPhaseOne(phaseOneParams.startPrice);
                 expect(await contract.getTickets()).to.equal(1);
@@ -301,6 +287,33 @@ describe('Auction Contract', async function () {
 
                 await expect(contract.mintAndDistribute(100)).to.be.revertedWith('');
             });
+        });
+        describe('addToWhitelist', function () {
+
+            it('Should have added the whitelisted addresses', async () => {
+                const signers = await ethers.getSigners();
+
+                const whitelist = signers.filter((_, i) => i % 2 === 0).map(s => s.address);
+
+                await (await contract.addToWhitelist(whitelist)).wait();
+
+                for (let i = 0; i < signers.length; ++i) {
+                    contract = contract.connect(signers[i]);
+                    const expectIt = expect(await contract.whitelisted());
+                    if (i % 2 == 0) {
+                        expectIt.to.be.true
+                    } else {
+                        expectIt.to.be.false
+                    }
+                }
+            });
+
+        });
+        describe('reveal', function () {
+
+            it('Should update the url and add revealed flag', () => {
+            });
+
         });
     });
 
