@@ -2,6 +2,7 @@ import React, {useCallback, useEffect, useState} from 'react';
 import './App.css';
 import Web3Modal from "web3modal";
 import WalletConnectProvider from '@walletconnect/web3-provider';
+import CoinbaseWalletSDK from '@coinbase/wallet-sdk';
 import ContractData from './app/model/ContractData';
 import {Contract, ethers, Signer} from 'ethers';
 import Page from './app/Page';
@@ -17,6 +18,13 @@ export interface AppProps {
 }
 
 const providerOptions = {
+    walletlink: {
+        package: CoinbaseWalletSDK,
+        options: {
+            appName: "Squirrel Degens NFT",
+            infuraId: "a836e60c950448288471582dfbd7be98",
+        }
+    },
     walletconnect: {
         package: WalletConnectProvider,
         options: {

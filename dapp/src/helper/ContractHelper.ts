@@ -21,8 +21,7 @@ export const buyTickets = async (amount: number, signer: Signer, contractData: C
     const address = await signer?.getAddress();
     const value = contractData?.price.mul(amount);
 
-    // TODO: change URL
-    const signatureResponse = await fetch('https://api.squirrel.trivetia.org/sign', {
+    const signatureResponse = await fetch('https://api.squirreldegens.com/api', {
         method: 'POST',
         body: JSON.stringify({address, value}),
         headers: {
@@ -126,7 +125,7 @@ export const awaitContract = async (signer: Signer, signal: AbortSignal): Promis
             let data: any;
             while (!signal.aborted && !data) {
                 try {
-                    const response = await fetch('https://api.squirrel.trivetia.org'); // TODO: Use remote URL
+                    const response = await fetch('https://api.squirreldegens.com/api');
                     if (response.status === 200) {
                         const json = await response.json();
                         if (json.started && json.contractAddress && json.abi) {
