@@ -63,6 +63,8 @@ contract Auction is ERC721Upgradeable, ERC721RoyaltyUpgradeable, OwnableUpgradea
         // 10% royalties
     }
 
+    // TODO: Whitelist
+
     /*
     * Starts the public auction with a specific price and supply. This method may not be called once the auction has been started.
     */
@@ -98,6 +100,8 @@ contract Auction is ERC721Upgradeable, ERC721RoyaltyUpgradeable, OwnableUpgradea
     */
     function buyPublic(bytes memory signature) public payable {}
 
+    // TODO: Stop function
+
     /*
     * Mint a specific amount of tokens before the auction starts.
     * Can be used to active the collection an a marketplace, like openseas.
@@ -127,11 +131,17 @@ contract Auction is ERC721Upgradeable, ERC721RoyaltyUpgradeable, OwnableUpgradea
     /*
     * Unlocks a token. This will unlock the token for trading and set the stake level for this token.
     */
-    function unstake(uint256 token) public {}
+    function unstake(uint256 token) public {
+        // days -> level -> map
+        // unstake -> map
+        // uint256 -> uint256
+    }
 
     /*
     * Returns the stake level for the given token
     */
     function stakeLevel(uint256 token) public view {}
+
+    // TODO: add stake level setter
 
 }
