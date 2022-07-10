@@ -21,7 +21,7 @@ contract AuctionV2 is ERC721Upgradeable, ERC721RoyaltyUpgradeable, OwnableUpgrad
     /*
         Constants
     */
-    uint256 private constant _royaltyPercentageBasisPoints = 1000;
+    uint96 private constant _royaltyPercentageBasisPoints = 1000;
     uint256 public constant ticketsPerWallet = 5;
 
     /*
@@ -138,10 +138,9 @@ contract AuctionV2 is ERC721Upgradeable, ERC721RoyaltyUpgradeable, OwnableUpgrad
 
         // Value check
         require(msg.value > 0, "Value has to be greater than 0");
-        require(msg.value % phasePrice_ == 0, "Value has to be a multiple of the price");
+        require(msg.value % privateAuctionPrice == 0, "Value has to be a multiple of the price");
 
-
-        uint256 ticketsToBuy = msg.value / phasePrice_;
+        uint256 ticketsToBuy = msg.value / privateAuctionPrice;
         uint256 currentTickets = privateAuctionTicketMap[_msgSender()];
 
         // Ticket amount check
@@ -151,7 +150,7 @@ contract AuctionV2 is ERC721Upgradeable, ERC721RoyaltyUpgradeable, OwnableUpgrad
         uint256 newTicketCount = uint256(ticketsToBuy + currentTickets);
 
         privateAuctionTicketCount += ticketsToBuy;
-        privateAuctionTicketMap(_msgSender()) += ticketsToBuy;
+        privateAuctionTicketMap[_msgSender()] += ticketsToBuy;
         for (uint256 i = 0; i < ticketsToBuy; ++i) {
             _ticketHolderMap[_ticketCounter.current()] = _msgSender();
             _ticketCounter.increment();
@@ -203,10 +202,10 @@ contract AuctionV2 is ERC721Upgradeable, ERC721RoyaltyUpgradeable, OwnableUpgrad
 
         // Value check
         require(msg.value > 0, "Value has to be greater than 0");
-        require(msg.value % phasePrice_ == 0, "Value has to be a multiple of the price");
+        require(msg.value % publicAuctionPrice == 0, "Value has to be a multiple of the price");
 
 
-        uint256 ticketsToBuy = msg.value / phasePrice_;
+        uint256 ticketsToBuy = msg.value / publicAuctionPrice;
         uint256 currentTickets = publicAuctionTicketMap[_msgSender()];
 
         // Ticket amount check
@@ -216,7 +215,7 @@ contract AuctionV2 is ERC721Upgradeable, ERC721RoyaltyUpgradeable, OwnableUpgrad
         uint256 newTicketCount = uint256(ticketsToBuy + currentTickets);
 
         publicAuctionTicketCount += ticketsToBuy;
-        publicAuctionTicketMap(_msgSender()) += ticketsToBuy;
+        publicAuctionTicketMap[_msgSender()] += ticketsToBuy;
         for (uint256 i = 0; i < ticketsToBuy; ++i) {
             _ticketHolderMap[_ticketCounter.current()] = _msgSender();
             _ticketCounter.increment();
@@ -265,7 +264,7 @@ contract AuctionV2 is ERC721Upgradeable, ERC721RoyaltyUpgradeable, OwnableUpgrad
     * Reveals the tokens by changing the baseURI_ to the correct path
     */
     function reveal(string memory baseURI_) public onlyOwner {
-
+        // TODO: chainlink integration
     }
 
     /*
@@ -311,7 +310,7 @@ contract AuctionV2 is ERC721Upgradeable, ERC721RoyaltyUpgradeable, OwnableUpgrad
     * Returns the stake level for the given token
     */
     function stakeLevel(uint256 token) public view returns (uint256) {
-        uint256 stakeTime = _stakeTimeMap[token];
+        uint256 stakeTime = _stakeLevelTimeMap[token];
         if (stakeTime == 0 && _stakeStartTimeMap[token] > 0) {
             stakeTime = block.timestamp - _stakeStartTimeMap[token];
         }
@@ -325,6 +324,8 @@ contract AuctionV2 is ERC721Upgradeable, ERC721RoyaltyUpgradeable, OwnableUpgrad
         }
         return level;
     }
+
+    // TODO: Token URI
 
     /*
     * Defines the stake level for a given duration
