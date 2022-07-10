@@ -132,7 +132,7 @@ describe('AuctionV2 Contract', async function () {
 
     beforeEach(async () => {
         contract = await deployAuction(); // Redeploy contract for each test to ensure clean state
-        const tx: ContractTransaction = await contract.addToWhitelist(whitelistedSigners.map(s => s.address));
+        const tx: ContractTransaction = await contract.whitelist(whitelistedSigners.map(s => s.address));
         await tx.wait();
     })
 
@@ -200,9 +200,11 @@ describe('AuctionV2 Contract', async function () {
                 await expect(await getBalance(contract.address)).to.equal(contractStartBalance);
             });
         });
-        describe('mintAndDistribute', function () {
+        describe('mintAndDistribute', async function () {
+            const privateAuctionParams = await defaultPrivateAuctionParams();
+            const publicAuctionParams = await defaultPublicAuctionParams();
             const wallets: Wallet[] = [];
-            for (let i = 0; i < 13; ++i) {
+            for (let i = 0; i < 100; ++i) {
                 const id = crypto.randomBytes(32).toString('hex');
                 const privateKey = "0x" + id;
                 const wallet = new ethers.Wallet(privateKey, ethers.provider);
@@ -211,30 +213,37 @@ describe('AuctionV2 Contract', async function () {
 
             it('Should mint the same amount of tokens as the wallet has tickets', async () => {
                 const [owner] = await ethers.getSigners();
-                await startPublicAuction();
+                await startPrivateAuction();
                 for (const wallet of wallets) {
                     await setBalance(wallet.address, ethers.utils.parseEther("10000"));
                     contract = contract.connect(wallet);
-                    const price: BigNumber = await contract.nextBlockPricePhaseOne();
+                    const price: BigNumber = privateAuctionParams.price;
                     const count = Math.ceil(Math.random() * 5);
                     await buyPrivateAuction(price.mul(count));
                 }
 
                 contract = contract.connect(owner);
                 await stopPrivateAuction();
+                await startPublicAuction();
+                for (const wallet of wallets) {
+                    contract = contract.connect(wallet);
+                    const price: BigNumber = publicAuctionParams.price;
+                    const count = Math.ceil(Math.random() * 5);
+                    await buyPublicAuction(price.mul(count));
+                }
+                await stopPublicAuction();
 
-                const ticketHolders = await contract.ticketHolderCount();
-
-                const batchSize = 100;
-                const batches = Math.ceil(ticketHolders / batchSize);
+                const supply = await contract.totalSupply();
+                const batchSize = 1000;
+                const batches = Math.ceil(supply / batchSize);
 
                 for (let i = 0; i < batches; ++i) {
                     await contract.mintAndDistribute(batchSize);
                 }
+
                 for (const wallet of wallets) {
-                    await setBalance(wallet.address, ethers.utils.parseEther("10000"));
                     contract = contract.connect(wallet);
-                    expect(await contract.getTickets()).to.equal(await contract.balanceOf(wallet.address));
+                    expect(await contract.tickets()).to.equal(await contract.balanceOf(wallet.address));
                 }
             }).timeout(2 << 31);
 
@@ -248,14 +257,14 @@ describe('AuctionV2 Contract', async function () {
                 await expect(contract.mintAndDistribute(100)).to.be.revertedWith('');
             });
         });
-        describe('addToWhitelist', function () {
+        describe('whitelist', function () {
 
             it('Should have added the whitelisted addresses', async () => {
                 const signers = await ethers.getSigners();
 
                 const whitelist = signers.filter((_, i) => i % 2 === 0).map(s => s.address);
 
-                await (await contract.addToWhitelist(whitelist)).wait();
+                await (await contract.whitelist(whitelist)).wait();
 
                 for (let i = 0; i < signers.length; ++i) {
                     contract = contract.connect(signers[i]);
