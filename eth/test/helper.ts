@@ -5,6 +5,9 @@ if (typeof global.it === 'function') {
     require('./test-helper');
 }
 
+export const increaseNextBlockTime = async (seconds: number) => {
+  await network.provider.send('evm_increaseTime', [seconds]);
+};
 
 export const mineBlocks = async (count: BigNumberish) => {
     for (let i = 0; i < count; ++i) {
