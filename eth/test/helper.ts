@@ -33,8 +33,8 @@ export const setBalance = async (to: string, value: BigNumberish) => {
     return await ethers.provider.send('hardhat_setBalance', [to, ethers.utils.hexValue(value)])
 }
 
-export const createSignature = (address: string, value: BigNumberish, phase: number, signer?: Signer) => {
-    return sign(['address', 'uint256', 'uint8'], [address, value, phase], signer)
+export const createSignature = (address: string, value: BigNumberish, phase: string, signer?: Signer) => {
+    return sign(['address', 'uint256', 'string'], [address, value, phase], signer)
 }
 
 export const sign = async (types: ReadonlyArray<string>, values: ReadonlyArray<any>, signer?: Signer) => {
