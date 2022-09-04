@@ -1,18 +1,15 @@
 import {expect} from 'chai';
-import {ethers, network} from 'hardhat';
+import {ethers} from 'hardhat';
 import {BigNumber, BigNumberish, Contract, ContractReceipt, ContractTransaction, Wallet} from 'ethers';
 import {describe} from 'mocha';
 import {
     createSignature,
     deploy,
-    deployProxy,
     getBalance,
     increaseNextBlockTime,
-    mineBlocks,
     setBalance
 } from './helper';
 import crypto from 'crypto';
-import base = Mocha.reporters.base;
 
 interface InitParams {
     tokenName: string;
@@ -89,7 +86,6 @@ describe('AuctionV2 Contract', async function () {
     let contract: Contract;
     let chainLinkContract: Contract;
     const whitelistedSigners = (await ethers.getSigners()).filter((_, i) => i % 2 === 0);
-    const nonWhitelistedSigners = (await ethers.getSigners()).filter((_, i) => i % 2 === 1);
 
     const startPrivateAuction = async (params?: Partial<PrivateAuctionParams>) => {
         const defaultParams = await defaultPrivateAuctionParams();
