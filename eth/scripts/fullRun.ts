@@ -1,3 +1,4 @@
+/*
 import 'dotenv/config';
 import {ContractTransaction, Wallet} from 'ethers';
 import {ethers, network, upgrades} from 'hardhat';
@@ -55,3 +56,5 @@ main()
         console.error(error);
         process.exit(1);
     });
+
+ */

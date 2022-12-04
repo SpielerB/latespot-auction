@@ -10,6 +10,7 @@ import {
     setBalance
 } from './helper';
 import crypto from 'crypto';
+import {fail} from 'assert';
 
 interface InitParams {
     tokenName: string;
@@ -20,6 +21,7 @@ interface InitParams {
     vrfCoordinator: string;
     ticketsPerWallet: number;
     chainLinkSubscriptionId: number;
+    chainLinkKeyHash: string;
 }
 
 interface PrivateAuctionParams {
@@ -42,7 +44,8 @@ const defaultInitParams = async (): Promise<InitParams> => {
         contractURI: 'https://example.com/contract',
         vrfCoordinator: '0x6168499c0cFfCaCD319c818142124B7A15E857ab',
         ticketsPerWallet: 5,
-        chainLinkSubscriptionId: 42
+        chainLinkSubscriptionId: 42,
+        chainLinkKeyHash: "0xd89b2bf150e3b9e13446986e571fb9cab24b13cea0a43ea20a6049a85cc807cc"
     };
 }
 
@@ -73,7 +76,9 @@ const deployAuction = async (overrides?: Partial<InitParams>) => {
         overrides?.baseURI || defaultParams.baseURI,
         overrides?.contractURI || defaultParams.contractURI,
         overrides?.vrfCoordinator || defaultParams.vrfCoordinator,
-        overrides?.ticketsPerWallet || defaultParams.ticketsPerWallet);
+        overrides?.ticketsPerWallet || defaultParams.ticketsPerWallet,
+        overrides?.chainLinkSubscriptionId || defaultParams.chainLinkSubscriptionId,
+        overrides?.chainLinkKeyHash || defaultParams.chainLinkKeyHash);
 };
 
 describe('AuctionV2 Contract', async function () {
@@ -189,12 +194,29 @@ describe('AuctionV2 Contract', async function () {
             });
 
             it('Should have the updated URI if revealed', async () => {
+                await startPrivateAuction({supply: BigNumber.from(5), price: BigNumber.from(1)})
+                await buyPrivateAuction(5);
+                await stopPrivateAuction();
+                await startPublicAuction({supply: BigNumber.from(5), price: BigNumber.from(1)})
+                await buyPublicAuction(5);
+                await stopPublicAuction();
+
+                await contract.mintAndDistribute(10);
+
                 const baseURI = 'https://test.example.com';
                 await contract.requestReveal(baseURI);
+                const seed = await contract.seed();
+                const totalSupply = await contract.totalSupply();
+                const offset = seed % totalSupply;
                 for (let i = 0; i < 10; ++i) {
-                    const id = +Math.ceil(Math.random() * 10000).toFixed(0);
-                    expect(await contract.tokenURI(id)).to.equal(`${baseURI}/meta_${id}_0.json`);
+                    const metaId = (i + offset) % totalSupply;
+                    expect(await contract.tokenURI(i)).to.equal(`${baseURI}/meta_${metaId}_0.json`);
                 }
+            });
+
+            it('Should point to the correct level', async () => {
+                const baseURI = 'https://test.example.com';
+                await contract.requestReveal(baseURI);
             });
         });
     });
@@ -333,6 +355,10 @@ describe('AuctionV2 Contract', async function () {
                 await buyPublicAuction(publicAuctionParams.price.mul(1000));
                 await stopPublicAuction();
                 contract = contract.connect(other);
+                await expect(contract.mintAndDistribute(1000)).to.be.reverted;
+            });
+
+            it('Should revert if no tokens can be minted', async () => {
                 await expect(contract.mintAndDistribute(1000)).to.be.reverted;
             });
         });
@@ -599,6 +625,9 @@ describe('AuctionV2 Contract', async function () {
     });
 
     context('Staking', async () => {
+
+        const levels = [3600, 7200, 10800, 14400, 18000];
+
         beforeEach(async () => {
             chainLinkContract = await deployChainLink();
             contract = await deployAuction({vrfCoordinator: chainLinkContract.address}); // Redeploy contract for each test to ensure clean state
@@ -608,7 +637,7 @@ describe('AuctionV2 Contract', async function () {
             await setBalance(await contract.signer.getAddress(), ethers.utils.parseEther('100000'));
             const {price: privatePrice} = await defaultPrivateAuctionParams();
             const {price: publicPrice} = await defaultPublicAuctionParams();
-            await contract.defineStakeLevels([3600, 7200, 10800, 14400, 18000]);
+            await contract.defineStakeLevels(levels);
             await startPrivateAuction();
             await buyPrivateAuction(privatePrice.mul(5));
             await stopPrivateAuction();
@@ -645,31 +674,54 @@ describe('AuctionV2 Contract', async function () {
                 await contract.requestReveal('https://test.example.com');
                 await contract.stake(1);
                 await contract.unStake(1);
+                try {
+                    await contract.stake(1);
+                } catch (e) {
+                    fail(`Was not able to stake again ${e}`)
+                }
+            });
+            it('Should transfer token to contract', async () => {
+                await contract.requestReveal('https://test.example.com');
                 await contract.stake(1);
+                expect(await contract.ownerOf(1)).to.equal(contract.address);
             });
         });
 
         describe('unStake', async () => {
-            it('Should not allow to stake if not revealed', async () => {
+            it('Should not allow to unStake if not staked', async () => {
+                await contract.requestReveal('https://test.example.com');
+                it('Should not work if not revealed', async () => {
+                    await expect(contract.unStake(1)).to.be.revertedWith('Token has not been staked');
+                });
 
             });
-            it('Should only allow the wallets token to be staked', async () => {
+            it('Should not allow to unStake if not owner of token', async () => {
+                const [, notOwner] = await ethers.getSigners();
+                await contract.requestReveal('https://test.example.com');
+                await contract.stake(1);
+
+                contract = contract.connect(notOwner);
+                it('Should not work if not revealed', async () => {
+                    await expect(contract.unStake(1)).to.be.revertedWith('Token does not belong to the sender wallet');
+                });
+            });
+            it('Should return the token to the original owner', async () => {
+                const [owner] = await ethers.getSigners();
+                await contract.requestReveal('https://test.example.com');
+                await contract.stake(1);
+                await contract.unStake(1);
+                expect(await contract.ownerOf(1)).to.equal(owner.address);
 
             });
-            it('Should update the staked time', async () => {
-
-            });
-        });
-
-        describe('stakeLevel', async () => {
-            it('Should not allow to stake if not revealed', async () => {
-
-            });
-            it('Should only allow the wallets token to be staked', async () => {
-
-            });
-            it('Should update the staked time', async () => {
-
+            it('Should set the correct stake level', async () => {
+                await contract.requestReveal('https://test.example.com');
+                for (let i = 0; i < levels.length; ++i) {
+                    const tokenId = i + 1;
+                    await contract.stake(tokenId);
+                    await increaseNextBlockTime(levels[i]);
+                    await contract.unStake(tokenId);
+                    expect(await contract.stakeLevel(tokenId)).to.equal(i + 1);
+                }
             });
         });
     });

@@ -1,5 +1,6 @@
 import React from 'react';
 import ContractData from './model/ContractData';
+import {useAPI} from '../helper/APIContext';
 
 interface PageProps {
     contractData: ContractData;

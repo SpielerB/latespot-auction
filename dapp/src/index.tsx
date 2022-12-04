@@ -1,7 +1,12 @@
-import React from 'react';
+import React, {useState} from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 import App from './App';
+import MockAPI from './helper/MockAPI';
+import { APIProvider } from './helper/APIContext';
+import { APIUpdateProvider } from './helper/APIUpdateContext';
+import DAPI from './helper/DAPI';
+import {Web3Configuration} from './Web3Configuration';
 
 const root = document.createElement('div');
 document.body.appendChild(root);
@@ -17,14 +22,22 @@ const clearChildren = (element: HTMLElement) => {
 }
 
 if (desktopElement && mobileElement) {
+
+    const Index = () => {
+        const [api, setApi] = useState(DAPI);
+        return (
+            <React.StrictMode>
+                <Web3Configuration>
+                    <App desktopElement={desktopElement} mobileElement={mobileElement}/>
+                </Web3Configuration>
+            </React.StrictMode>
+        );
+    }
+
     clearChildren(desktopElement);
     clearChildren(mobileElement);
 
-    ReactDOM.render(
-        <React.StrictMode>
-            <App desktopElement={desktopElement} mobileElement={mobileElement}/>
-        </React.StrictMode>,
-        root);
+    ReactDOM.render(<Index />,root);
 } else {
     console.error('Missing mobile or desktop element (dapp-root and dapp-root-mobile)')
 }
