@@ -7,7 +7,10 @@ module.exports = function override(config) {
 
     config.optimization = {
         ...config.optimization,
-        runtimeChunk: false
+        runtimeChunk: false,
+        splitChunks: {
+            minChunks: 10000000
+        }
     }
 
     config.plugins.map((plugin, i) => {

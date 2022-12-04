@@ -24,7 +24,6 @@ const clearChildren = (element: HTMLElement) => {
 if (desktopElement && mobileElement) {
 
     const Index = () => {
-        const [api, setApi] = useState(DAPI);
         return (
             <React.StrictMode>
                 <Web3Configuration>
