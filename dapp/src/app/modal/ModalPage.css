@@ -1,0 +1,45 @@
+.modal-open {
+    overflow: hidden !important;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background-color: rgba(20, 20, 20, 0.75);
+    z-index: 1000000;
+    display: flex;
+    justify-content: space-around;
+    align-content: stretch;
+}
+
+.modal-box {
+    position: relative;
+    flex-grow: 1;
+    margin: 16px;
+    background-color: rgb(15, 15, 15);
+    padding: 48px 16px 16px
+}
+
+.modal-close {
+    display: flex;
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    cursor: pointer;
+    padding: 2px 0 0 1px;
+    height: 32px;
+    width: 32px;
+    font-size: 32px;
+    user-select: none;
+}
+
+.modal-close:hover {
+    color: #0cffcf;
+}
+
+.modal-close:active {
+    color: #078d74;
+}

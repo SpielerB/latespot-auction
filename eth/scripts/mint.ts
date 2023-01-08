@@ -2,6 +2,7 @@ import 'dotenv/config';
 import {Contract, ContractTransaction, Wallet} from 'ethers';
 import {ethers} from 'hardhat';
 import contractData from '../artifacts/contracts/Auction.sol/Auction.json';
+import {address} from './contract/AuctionV2.json'
 
 const waitFor = async (tx: Promise<ContractTransaction>) => {
     return (await tx).wait();
@@ -9,15 +10,19 @@ const waitFor = async (tx: Promise<ContractTransaction>) => {
 
 async function main() {
     const signer = new Wallet(process.env.OWNER_PRIVATE_KEY as string, ethers.provider);
-    const contract = new Contract('0x1458203959F9E990e80c7F9962035846e7CfA725', contractData.abi, signer);
+    const contract = new Contract(address, contractData.abi, signer);
 
-    const holderCount = await contract.ticketHolderCount();
-    const batchSize = 100;
-    const batchCount = Math.ceil(holderCount / batchSize);
-    for (let i = 0; i < batchCount; ++i) {
-        await waitFor(contract.mintAndDistribute(batchSize));
+    const supply = await contract.totalSupply();
+    const batchSize = 1000;
+    const batches = Math.ceil(supply / batchSize);
+
+    console.log(`Minting ${supply} tokens in ${batches} batches of ${batchSize} tokens`)
+
+    for (let i = 0; i < batches; ++i) {
+        await contract.mintAndDistribute(batchSize);
+        console.log(`Minted batch #${i + 1}`);
     }
-    console.log('Finished minting all tokens')
+    console.log("Finished minting all tokens")
 }
 
 // We recommend this pattern to be able to use async/await everywhere

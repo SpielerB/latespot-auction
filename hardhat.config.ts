@@ -19,7 +19,7 @@ task('compile', async (taskArgs, hre, runSuper) => {
     if (!fs.existsSync('server/src/contract')) {
         fs.mkdirSync('server/src/contract');
     }
-    const rawFile = fs.readFileSync('eth/artifacts/contracts/Auction.sol/Auction.json');
+    const rawFile = fs.readFileSync('eth/artifacts/contracts/AuctionV2.sol/AuctionV2.json');
     const {abi} = JSON.parse(rawFile.toString());
     const jsonString =  JSON.stringify({abi}, null, 2);
     fs.writeFileSync('server/src/contract/abi.json', jsonString);

@@ -1,15 +1,39 @@
-# Basic Sample Hardhat Project
+# SquirrelDegens DAPP project
 
-This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, a sample script that deploys that contract, and an example of a task implementation, which simply lists the available accounts.
-
-Try running some of the following tasks:
+### Whitelist (interactive)
 
 ```shell
-npx hardhat accounts
-npx hardhat compile
-npx hardhat clean
-npx hardhat test
-npx hardhat node
-node eth/scripts/deploy.ts
-npx hardhat help
+npx hardhat run .\eth\scripts\whitelist.ts
+```
+
+### Un-whitelist (interactive)
+
+```shell
+npx hardhat run .\eth\scripts\unwhitelist.ts
+```
+
+### Start private auction
+
+```shell
+npx hardhat run .\eth\scripts\startPrivateAuction.ts
+```
+### Stop private auction
+
+```shell
+npx hardhat run .\eth\scripts\stopPrivateAuction.ts
+```
+
+### Start public auction
+```shell
+npx hardhat run .\eth\scripts\startPublicAuction.ts
+```
+
+### Stop public auction
+```shell
+npx hardhat run .\eth\scripts\stopPrivateAuction.ts
+```
+
+### Mint and distribute tokens
+```shell
+npx hardhat run .\eth\scripts\mint.ts
 ```

@@ -40,8 +40,6 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
     */
     address private immutable _vrfCoordinator;
     uint64 private immutable _chainLinkSubscriptionId;
-
-    uint256 public immutable ticketsPerWallet;
     Counters.Counter private _tokenCounter;
     uint256 public preMintCount;
 
@@ -72,6 +70,7 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
     uint256 public privateAuctionPrice;
     uint256 public privateAuctionTicketCount;
     uint256 public privateAuctionTicketSupply;
+    uint256 public privateAuctionTicketsPerWallet;
     mapping(address => uint256) public privateAuctionTicketMap;
 
     bool public publicAuctionStarted;
@@ -79,6 +78,7 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
     uint256 public publicAuctionPrice;
     uint256 public publicAuctionTicketCount;
     uint256 public publicAuctionTicketSupply;
+    uint256 public publicAuctionTicketsPerWallet;
     mapping(address => uint256) public publicAuctionTicketMap;
 
     /*
@@ -93,12 +93,11 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
     bool public revealed;
     uint256 public seed;
 
-    constructor(string memory tokenName_, string memory tokenSymbol_, address signatureAddress_, string memory baseURI_, string memory contractURI_, address vrfCoordinator_, uint256 ticketsPerWallet_, uint64 chainLinkSubscriptionId_, bytes32 keyHash_) ERC721Royalty() Ownable() ERC721(tokenName_, tokenSymbol_) VRFConsumerBaseV2(vrfCoordinator_) {
+    constructor(string memory tokenName_, string memory tokenSymbol_, address signatureAddress_, string memory baseURI_, string memory contractURI_, address vrfCoordinator_, uint64 chainLinkSubscriptionId_, bytes32 keyHash_) ERC721Royalty() Ownable() ERC721(tokenName_, tokenSymbol_) VRFConsumerBaseV2(vrfCoordinator_) {
         signatureAddress = signatureAddress_;
         __baseURI = baseURI_;
         _contractURI = contractURI_;
         _vrfCoordinator = vrfCoordinator_;
-        ticketsPerWallet = ticketsPerWallet_;
         _chainLinkSubscriptionId = chainLinkSubscriptionId_;
         keyHash = keyHash_;
 
@@ -142,11 +141,13 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
     /*
     * Starts the public auction with a specific price and supply. This method may not be called once the auction has been started.
     */
-    function startPrivateAuction(uint256 price_, uint256 supply_) public onlyOwner {
+    function startPrivateAuction(uint256 price_, uint256 supply_, uint256 ticketsPerWallet_) public onlyOwner {
         require(!privateAuctionStarted, "Private auction has already been started");
+        require(ticketsPerWallet_ > 0, "Requires at least 1 ticket per wallet");
         privateAuctionPrice = price_;
         privateAuctionTicketSupply = supply_;
         privateAuctionStarted = true;
+        privateAuctionTicketsPerWallet = ticketsPerWallet_;
     }
 
     /*
@@ -179,7 +180,7 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
         uint256 currentTickets = privateAuctionTicketMap[_msgSender()];
 
         // Ticket amount check
-        require(ticketsToBuy + currentTickets <= ticketsPerWallet, "Total ticket count is higher than the max allowed tickets per wallet for the private auction");
+        require(ticketsToBuy + currentTickets <= privateAuctionTicketsPerWallet, "Total ticket count is higher than the max allowed tickets per wallet for the private auction");
         require(privateAuctionTicketCount + ticketsToBuy <= privateAuctionTicketSupply, "There are not enough tickets left in the private auction");
 
         privateAuctionTicketCount += ticketsToBuy;
@@ -189,7 +190,7 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
         }
     }
 
-    function privateTickets() public view returns (uint256) {
+    function privateAuctionTickets() public view returns (uint256) {
         return privateAuctionTicketMap[_msgSender()];
     }
 
@@ -204,13 +205,15 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
     /*
     * Starts the public auction with a specific price and supply. This method may not be called once the auction has been started.
     */
-    function startPublicAuction(uint256 price_, uint256 supply_) public onlyOwner {
+    function startPublicAuction(uint256 price_, uint256 supply_, uint256 ticketsPerWallet_) public onlyOwner {
         require(!publicAuctionActive(), "Public auction has already been started");
         require(privateAuctionStarted, "Public auction must start after private auction");
         require(!privateAuctionActive(), "Private auction is still active");
+        require(ticketsPerWallet_ > 0, "Requires at least 1 ticket per wallet");
         publicAuctionStarted = true;
         publicAuctionPrice = price_;
         publicAuctionTicketSupply = supply_;
+        publicAuctionTicketsPerWallet = ticketsPerWallet_;
     }
 
     /*
@@ -240,7 +243,7 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
         uint256 currentTickets = publicAuctionTicketMap[_msgSender()];
 
         // Ticket amount check
-        require(ticketsToBuy + currentTickets <= ticketsPerWallet, "Total ticket count is higher than the max allowed tickets per wallet for the public auction");
+        require(ticketsToBuy + currentTickets <= publicAuctionTicketsPerWallet, "Total ticket count is higher than the max allowed tickets per wallet for the public auction");
         require(publicAuctionTicketCount + ticketsToBuy <= publicAuctionTicketSupply, "There are not enough tickets left in the public auction");
 
         publicAuctionTicketCount += ticketsToBuy;
@@ -250,7 +253,7 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
         }
     }
 
-    function publicTickets() public view returns (uint256) {
+    function publicAuctionTickets() public view returns (uint256) {
         return publicAuctionTicketMap[_msgSender()];
     }
 

@@ -6,6 +6,10 @@
 import {ethers, network, upgrades} from 'hardhat';
 import fetch from 'node-fetch';
 import crypto from 'crypto';
+import fs from 'fs';
+
+const { dirname } = require('path');
+const appDir = dirname(require.main?.filename);
 
 interface DeployContract {
     name: string;
@@ -15,17 +19,9 @@ interface DeployContract {
 }
 
 async function main() {
-    console.log('Generating random whitelist addresses');
-    const addresses = [];
-    for(let i = 0; i < 1000; ++i) {
-        const id = crypto.randomBytes(32).toString('hex');
-        const privateKey = "0x" + id;
-        const wallet = new ethers.Wallet(privateKey);
-        addresses.push(wallet.address);
-    }
 
     const contracts: DeployContract[] = [
-        {name: 'Auction', proxy: true, params: ['LateSpotNFT', 'LSNFT', 10000, '0x3b00de7ba3E2D64f2811A55C33457f1431df6462', 'https://pastebin.com/dl/cH4NfnWU', addresses]},
+        {name: 'AuctionV2', proxy: false, params: ['LateSpotNFT', 'LSNFT', '0x3b00de7ba3E2D64f2811A55C33457f1431df6462', 'https://pastebin.com/dl/cH4NfnWU', 'https://pastebin.com/dl/cH4NfnWU', '0x3b00de7ba3E2D64f2811A55C33457f1431df6462', 42, "0xd89b2bf150e3b9e13446986e571fb9cab24b13cea0a43ea20a6049a85cc807cc"]},
         {name: 'Greeter', proxy: false, params: ['Hello World from hardhat!']},
     ];
 
@@ -58,6 +54,15 @@ async function main() {
         const tx = await contract.deployTransaction.wait();
         const gasCost = ethers.utils.formatEther(`${tx.effectiveGasPrice.mul(tx.gasUsed)}`);
         console.log(`Contract ${name} deployed to ${contract.address}. (Costs ${gasCost} ETH or ${(+gasCost * price).toFixed(2)} BUSD)`);
+        if (appDir) {
+            console.log("Saving contract information");
+            fs.mkdirSync(`${appDir}/../../server/src/contract/`, {recursive: true});
+            fs.mkdirSync(`${appDir}/contract/`, {recursive: true});
+            fs.writeFileSync(`${appDir}/../../server/src/contract/${name}.json`, JSON.stringify({address: contract.address}), {flag: "w"});
+            fs.writeFileSync(`${appDir}/contract/${name}.json`, JSON.stringify({address: contract.address}), {flag: "w"});
+        } else {
+            console.error("AppDir unavailable");
+        }
     }
 }
 

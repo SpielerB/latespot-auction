@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import * as dotenv from 'dotenv';
 import {abi} from './contract/abi.json';
+import {address} from './contract/AuctionV2.json';
 
 dotenv.config();
 
@@ -13,13 +14,12 @@ const port = parseInt((process.env.PORT || 5000) as string, 10);
 
 const privateKey = process.env.OWNER_PRIVATE_KEY as string;
 const network = process.env.NETWORK;
-const contractAddress = process.env.CONTRACT as string;
 
 const provider = new ethers.providers.JsonRpcProvider(network);
 
 const signer = new ethers.Wallet(privateKey, provider);
 
-const contract = new Contract(contractAddress, abi, signer);
+const contract = new Contract(address, abi, signer);
 
 const app = express();
 
@@ -34,10 +34,10 @@ let started = false;
 
 app.get('/', async (req, res) => {
     try {
-        if (started || (started = await contract.hasStarted())) {
+        if (started || (started = await contract.privateAuctionStarted())) {
             const data = {
                 started: true,
-                contractAddress,
+                contractAddress: address,
                 abi
             };
             res.send(data);

@@ -19,7 +19,6 @@ interface InitParams {
     baseURI: string;
     contractURI: string;
     vrfCoordinator: string;
-    ticketsPerWallet: number;
     chainLinkSubscriptionId: number;
     chainLinkKeyHash: string;
 }
@@ -27,11 +26,13 @@ interface InitParams {
 interface PrivateAuctionParams {
     price: BigNumber;
     supply: BigNumber;
+    ticketsPerWallet: number;
 }
 
 interface PublicAuctionParams {
     price: BigNumber;
     supply: BigNumber;
+    ticketsPerWallet: number;
 }
 
 const defaultInitParams = async (): Promise<InitParams> => {
@@ -43,7 +44,6 @@ const defaultInitParams = async (): Promise<InitParams> => {
         baseURI: 'https://example.com/token/0',
         contractURI: 'https://example.com/contract',
         vrfCoordinator: '0x6168499c0cFfCaCD319c818142124B7A15E857ab',
-        ticketsPerWallet: 5,
         chainLinkSubscriptionId: 42,
         chainLinkKeyHash: "0xd89b2bf150e3b9e13446986e571fb9cab24b13cea0a43ea20a6049a85cc807cc"
     };
@@ -52,14 +52,16 @@ const defaultInitParams = async (): Promise<InitParams> => {
 const defaultPrivateAuctionParams = async (): Promise<PrivateAuctionParams> => {
     return {
         price: ethers.utils.parseEther("1"),
-        supply: BigNumber.from(2000)
+        supply: BigNumber.from(2000),
+        ticketsPerWallet: 2
     }
 }
 
 const defaultPublicAuctionParams = async (): Promise<PrivateAuctionParams> => {
     return {
         price: ethers.utils.parseEther("2"),
-        supply: BigNumber.from(8000)
+        supply: BigNumber.from(8000),
+        ticketsPerWallet: 5
     }
 }
 
@@ -76,7 +78,6 @@ const deployAuction = async (overrides?: Partial<InitParams>) => {
         overrides?.baseURI || defaultParams.baseURI,
         overrides?.contractURI || defaultParams.contractURI,
         overrides?.vrfCoordinator || defaultParams.vrfCoordinator,
-        overrides?.ticketsPerWallet || defaultParams.ticketsPerWallet,
         overrides?.chainLinkSubscriptionId || defaultParams.chainLinkSubscriptionId,
         overrides?.chainLinkKeyHash || defaultParams.chainLinkKeyHash);
 };
@@ -96,7 +97,8 @@ describe('AuctionV2 Contract', async function () {
         const defaultParams = await defaultPrivateAuctionParams();
         const tx: ContractTransaction = await contract.startPrivateAuction(
             wrapParam(params?.price, defaultParams.price),
-            wrapParam(params?.supply, defaultParams.supply)
+            wrapParam(params?.supply, defaultParams.supply),
+            wrapParam(params?.ticketsPerWallet, defaultParams.ticketsPerWallet)
         );
         await tx.wait(); // Wait for the block to be mined to ensure that the transaction has either been rejected or went through
         return tx;
@@ -124,7 +126,8 @@ describe('AuctionV2 Contract', async function () {
         const defaultParams = await defaultPublicAuctionParams();
         const tx: ContractTransaction = await contract.startPublicAuction(
             wrapParam(params?.price, defaultParams.price),
-            wrapParam(params?.supply, defaultParams.supply)
+            wrapParam(params?.supply, defaultParams.supply),
+            wrapParam(params?.ticketsPerWallet, defaultParams.ticketsPerWallet)
         );
         await tx.wait(); // Wait for the block to be mined to ensure that the transaction has either been rejected or went through
         return tx;
@@ -172,7 +175,7 @@ describe('AuctionV2 Contract', async function () {
                 const whitelist = [(await ethers.getSigners())[0].address];
                 await contract.whitelist(whitelist);
 
-                await startPrivateAuction();
+                await startPrivateAuction({ticketsPerWallet: 5});
                 await buyPrivateAuction(defaultPrivateParams.price);
                 expect(await contract.tickets()).to.equal(1);
                 await buyPrivateAuction(defaultPrivateParams.price.mul(2));
@@ -194,7 +197,7 @@ describe('AuctionV2 Contract', async function () {
             });
 
             it('Should have the updated URI if revealed', async () => {
-                await startPrivateAuction({supply: BigNumber.from(5), price: BigNumber.from(1)})
+                await startPrivateAuction({supply: BigNumber.from(5), price: BigNumber.from(1), ticketsPerWallet: 5})
                 await buyPrivateAuction(5);
                 await stopPrivateAuction();
                 await startPublicAuction({supply: BigNumber.from(5), price: BigNumber.from(1)})
@@ -281,7 +284,7 @@ describe('AuctionV2 Contract', async function () {
                     await setBalance(wallet.address, ethers.utils.parseEther("10000"));
                     contract = contract.connect(wallet);
                     const price: BigNumber = privateAuctionParams.price;
-                    const count = Math.ceil(Math.random() * 5);
+                    const count = Math.ceil(Math.random() * 2);
                     if (privateAuctionParams.supply.lte(total + count)) {
                         break;
                     }
@@ -324,12 +327,12 @@ describe('AuctionV2 Contract', async function () {
             it('Should be able to mint ~1000 tokens', async () => {
                 const [owner] = await ethers.getSigners();
                 await setBalance(owner.address, ethers.utils.parseEther(privateAuctionParams.price.mul(privateAuctionParams.supply).mul(2).toString()));
-                contract = await deployAuction({ticketsPerWallet: 10000})
+                contract = await deployAuction()
                 await contract.whitelist([await owner.getAddress()]);
-                await startPrivateAuction({supply: BigNumber.from(2000)});
+                await startPrivateAuction({supply: BigNumber.from(2000), ticketsPerWallet: 2000});
                 await buyPrivateAuction(privateAuctionParams.price.mul(1000));
                 await stopPrivateAuction();
-                await startPublicAuction();
+                await startPublicAuction({ticketsPerWallet: 8000});
                 await buyPublicAuction(publicAuctionParams.price.mul(1000));
                 await stopPublicAuction();
                 const supply = await contract.totalSupply();
@@ -346,12 +349,12 @@ describe('AuctionV2 Contract', async function () {
             it('Should allow for only the owner to mint and distribute', async () => {
                 const [owner, other] = await ethers.getSigners();
                 await setBalance(owner.address, ethers.utils.parseEther(privateAuctionParams.price.mul(privateAuctionParams.supply).mul(2).toString()));
-                contract = await deployAuction({ticketsPerWallet: 10000})
+                contract = await deployAuction()
                 await contract.whitelist([await owner.getAddress(), await other.getAddress()]);
-                await startPrivateAuction({supply: BigNumber.from(2000)});
+                await startPrivateAuction({supply: BigNumber.from(2000), ticketsPerWallet: 2000});
                 await buyPrivateAuction(privateAuctionParams.price);
                 await stopPrivateAuction();
-                await startPublicAuction();
+                await startPublicAuction({ticketsPerWallet: 8000});
                 await buyPublicAuction(publicAuctionParams.price.mul(1000));
                 await stopPublicAuction();
                 contract = contract.connect(other);
@@ -385,7 +388,7 @@ describe('AuctionV2 Contract', async function () {
 
         context('deWhitelist', function () {
 
-            it('Should have added the whitelisted addresses', async () => {
+            it('Should have removed the whitelisted addresses', async () => {
                 const signers = await ethers.getSigners();
 
                 const whitelist = signers.filter((_, i) => i % 2 === 0).map(s => s.address);
@@ -418,6 +421,15 @@ describe('AuctionV2 Contract', async function () {
                 expect(await contract.privateAuctionStarted()).to.be.true;
                 expect(await contract.privateAuctionStopped()).to.be.false;
             });
+
+            it('Should prevent 0 tickets per wallet', async () => {
+                const {price, supply} = await defaultPublicAuctionParams();
+                await expect(contract.startPrivateAuction(price, supply, 0)).to.be.revertedWith('Requires at least 1 ticket per wallet');
+            });
+            it('Should set the correct ticket limit per wallet', async () => {
+                await startPrivateAuction();
+                expect(await contract.privateAuctionTicketsPerWallet()).to.equal(2);
+            });
             it('Should not start start the private auction again', async () => {
                 await startPrivateAuction();
                 await expect(startPrivateAuction()).to.be.revertedWith('Private auction has already been started');
@@ -428,12 +440,12 @@ describe('AuctionV2 Contract', async function () {
                 const price = (await defaultPrivateAuctionParams()).price;
                 const [wallet] = await ethers.getSigners();
                 await setBalance(wallet.address, ethers.utils.parseEther("10000"));
-                await startPrivateAuction();
+                await startPrivateAuction({ticketsPerWallet: 5});
                 await buyPrivateAuction(price);
-                expect(await contract.privateTickets()).to.equal(1);
+                expect(await contract.privateAuctionTickets()).to.equal(1);
                 expect(await contract.tickets()).to.equal(1);
                 await buyPrivateAuction(price.mul(3));
-                expect(await contract.privateTickets()).to.equal(4);
+                expect(await contract.privateAuctionTickets()).to.equal(4);
                 expect(await contract.tickets()).to.equal(4);
             });
 
@@ -441,7 +453,7 @@ describe('AuctionV2 Contract', async function () {
                 const price = (await defaultPrivateAuctionParams()).price;
                 const [wallet] = await ethers.getSigners();
                 await setBalance(wallet.address, ethers.utils.parseEther("10000"));
-                await startPrivateAuction();
+                await startPrivateAuction({ticketsPerWallet: 5});
                 await expect(buyPrivateAuction(price.mul(6))).to.be.revertedWith('Total ticket count is higher than the max allowed tickets per wallet for the private auction');
                 await buyPrivateAuction(price.mul(3));
                 await expect(buyPrivateAuction(price.mul(3))).to.be.revertedWith('Total ticket count is higher than the max allowed tickets per wallet for the private auction');
@@ -453,7 +465,7 @@ describe('AuctionV2 Contract', async function () {
                 const price = (await defaultPrivateAuctionParams()).price;
                 const [wallet] = await ethers.getSigners();
                 await setBalance(wallet.address, ethers.utils.parseEther("10000"));
-                await startPrivateAuction({supply: BigNumber.from(2)});
+                await startPrivateAuction({supply: BigNumber.from(2), ticketsPerWallet: 5});
                 await expect(buyPrivateAuction(price.mul(3))).to.be.revertedWith('There are not enough tickets left in the private auction');
                 await buyPrivateAuction(price.mul(2));
                 await expect(buyPrivateAuction(price)).to.be.revertedWith('Private auction is not active');
@@ -505,16 +517,15 @@ describe('AuctionV2 Contract', async function () {
     context('Public Auction', async () => {
         describe('startPublicAuction', async () => {
             it('Should not start the public auction before the private auction', async () => {
-                const {price, supply} = await defaultPublicAuctionParams();
-                await expect(contract.startPublicAuction(price, supply)).to.be.revertedWith('Public auction must start after private auction');
+                const {price, supply, ticketsPerWallet} = await defaultPublicAuctionParams();
+                await expect(contract.startPublicAuction(price, supply, ticketsPerWallet)).to.be.revertedWith('Public auction must start after private auction');
             });
 
             it('Should not start the public auction if the private auction is active', async () => {
-                const {price, supply} = await defaultPublicAuctionParams();
+                const {price, supply, ticketsPerWallet} = await defaultPublicAuctionParams();
                 await startPrivateAuction();
-                await expect(contract.startPublicAuction(price, supply)).to.be.revertedWith('Private auction is still active');
+                await expect(contract.startPublicAuction(price, supply, ticketsPerWallet)).to.be.revertedWith('Private auction is still active');
             });
-
             it('Should start the public auction', async () => {
                 await startPrivateAuction();
                 await stopPrivateAuction();
@@ -522,6 +533,18 @@ describe('AuctionV2 Contract', async function () {
                 expect(await contract.publicAuctionActive()).to.be.true;
                 expect(await contract.publicAuctionStarted()).to.be.true;
                 expect(await contract.publicAuctionStopped()).to.be.false;
+            });
+            it('Should prevent 0 tickets per wallet', async () => {
+                const {price, supply} = await defaultPublicAuctionParams();
+                await startPrivateAuction();
+                await stopPrivateAuction();
+                await expect(contract.startPublicAuction(price, supply, 0)).to.be.revertedWith('Requires at least 1 ticket per wallet');
+            });
+            it('Should set the correct ticket limit per wallet', async () => {
+                await startPrivateAuction();
+                await stopPrivateAuction();
+                await startPublicAuction();
+                expect(await contract.publicAuctionTicketsPerWallet()).to.equal(5);
             });
             it('Should not start start the public auction again', async () => {
                 await startPrivateAuction();
@@ -539,10 +562,10 @@ describe('AuctionV2 Contract', async function () {
                 await stopPrivateAuction();
                 await startPublicAuction();
                 await buyPublicAuction(price);
-                expect(await contract.publicTickets()).to.equal(1);
+                expect(await contract.publicAuctionTickets()).to.equal(1);
                 expect(await contract.tickets()).to.equal(1);
                 await buyPublicAuction(price.mul(3));
-                expect(await contract.publicTickets()).to.equal(4);
+                expect(await contract.publicAuctionTickets()).to.equal(4);
                 expect(await contract.tickets()).to.equal(4);
             });
 
@@ -638,7 +661,7 @@ describe('AuctionV2 Contract', async function () {
             const {price: privatePrice} = await defaultPrivateAuctionParams();
             const {price: publicPrice} = await defaultPublicAuctionParams();
             await contract.defineStakeLevels(levels);
-            await startPrivateAuction();
+            await startPrivateAuction({ticketsPerWallet: 5});
             await buyPrivateAuction(privatePrice.mul(5));
             await stopPrivateAuction();
             await startPublicAuction();
