@@ -1,0 +1,7 @@
+enum ModalTarget {
+    AUCTION = "AUCTION",
+    STAKING_CONSOLE = "STAKING_CONSOLE",
+    BRONZE_PASS_UTILITIES = "BRONZE_PASS_UTILITIES"
+}
+
+export default ModalTarget;

@@ -12,7 +12,7 @@ dotenv.config();
 
 const port = parseInt((process.env.PORT || 5000) as string, 10);
 
-const privateKey = process.env.OWNER_PRIVATE_KEY as string;
+const privateKey = process.env.SIGNER_PRIVATE_KEY as string;
 const network = process.env.NETWORK;
 
 const provider = new ethers.providers.JsonRpcProvider(network);
@@ -42,10 +42,10 @@ app.get('/', async (req, res) => {
             };
             res.send(data);
         } else {
-            res.send({started: false});
+            res.send({started: false, contractAddress: null, abi: null});
         }
     } catch (error) {
-        res.send({started: false});
+        res.send({started: false, contractAddress: null, abi: null});
     }
 });
 
@@ -53,8 +53,15 @@ app.post('/sign', async (req, res) => {
     try {
         const {value, address} = req.body;
         console.log(`Signing request for ${address}@${value}`)
-        const phase = await contract.currentPhase();
-        const payload = ethers.utils.defaultAbiCoder.encode(['address', 'uint256', 'uint256'], [address, value, phase]);
+        const isPrivateAuction = await contract.privateAuctionActive();
+        const isPublicAuction = await contract.publicAuctionActive();
+        if (!isPrivateAuction && !isPublicAuction) {
+            console.error("No auction active");
+            res.sendStatus(400);
+            return;
+        }
+        const auctionPhase = isPrivateAuction ? "private" : "public";
+        const payload = ethers.utils.defaultAbiCoder.encode(['address', 'uint256', 'string'], [address, value, auctionPhase]);
         const hash = ethers.utils.keccak256(payload);
         const signature = await signer.signMessage(ethers.utils.arrayify(hash));
         res.send(signature);

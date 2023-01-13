@@ -1,17 +1,14 @@
 import 'dotenv/config';
-import {Contract, ContractTransaction, Wallet} from 'ethers';
+import {Contract, Wallet} from 'ethers';
 import {ethers} from 'hardhat';
-import contractData from '../artifacts/contracts/Auction.sol/Auction.json';
-
-const waitFor = async (tx: Promise<ContractTransaction>) => {
-    return (await tx).wait();
-}
+import contractData from '../artifacts/contracts/AuctionV2.sol/AuctionV2.json';
+import {address} from './contract/AuctionV2.json';
 
 async function main() {
     const signer = new Wallet(process.env.OWNER_PRIVATE_KEY as string, ethers.provider);
-    const contract = new Contract('0x1458203959F9E990e80c7F9962035846e7CfA725', contractData.abi, signer);
+    const contract = new Contract(address, contractData.abi, signer);
 
-    await waitFor(contract.reveal('https://api.squirrel.trivetia.org/token/'));
+    await contract.requestReveal('https://api.squirrel.trivetia.org/token/');
     console.log('Revealed')
 }
 

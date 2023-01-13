@@ -21,7 +21,7 @@ task('compile', async (taskArgs, hre, runSuper) => {
     }
     const rawFile = fs.readFileSync('eth/artifacts/contracts/AuctionV2.sol/AuctionV2.json');
     const {abi} = JSON.parse(rawFile.toString());
-    const jsonString =  JSON.stringify({abi}, null, 2);
+    const jsonString = JSON.stringify({abi}, null, 2);
     fs.writeFileSync('server/src/contract/abi.json', jsonString);
 });
 

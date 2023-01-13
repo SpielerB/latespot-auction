@@ -58,24 +58,19 @@ contract MockChainLink is VRFCoordinatorV2Interface {
         return (a, b, c, d);
     }
 
-    function requestSubscriptionOwnerTransfer(uint64 subId, address newOwner) external {
+    function requestSubscriptionOwnerTransfer(uint64 subId, address newOwner) external {}
 
+    function acceptSubscriptionOwnerTransfer(uint64 subId) external {}
+
+    function addConsumer(uint64 subId, address consumer) external {}
+
+    function removeConsumer(uint64 subId, address consumer) external {}
+
+    function cancelSubscription(uint64 subId, address to) external {}
+
+    function pendingRequestExists(uint64 subId) external view returns (bool) {
+        return false;
     }
 
-    function acceptSubscriptionOwnerTransfer(uint64 subId) external {
-
-    }
-
-    function addConsumer(uint64 subId, address consumer) external {
-
-    }
-
-    function removeConsumer(uint64 subId, address consumer) external {
-
-    }
-
-    function cancelSubscription(uint64 subId, address to) external {
-
-    }
 
 }

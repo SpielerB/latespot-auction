@@ -1,4 +1,4 @@
-export default interface ContractData {
+export default interface ContractMetadata {
     started: boolean;
     contractAddress?: string;
     abi?: any;

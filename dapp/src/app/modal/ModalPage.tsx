@@ -1,14 +1,12 @@
 import "./ModalPage.css"
 import React, {useCallback, useEffect} from 'react';
-import {closeModal, useModalState} from '../../store/reducer/ModalReducer';
-import {useDispatch} from 'react-redux';
+import {useAppDispatch} from '../../store/Store';
+import {closeModal, useModalOpen} from '../../store/application/ApplicationReducer';
 
 const ModalPage = ({children}: React.PropsWithChildren) => {
-    const {open} = useModalState()
-
-    const dispatch = useDispatch();
+    const dispatch = useAppDispatch();
+    const open = useModalOpen();
     const close = useCallback(() => dispatch(closeModal()), []);
-
 
     const keyUpListener = useCallback((event: KeyboardEvent) => {
         if (event.key === 'Escape') {

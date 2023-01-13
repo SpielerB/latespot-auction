@@ -1,12 +1,8 @@
-enum ApplicationState {
-    DISCONNECTED,
-    PRE_AUCTION,
-    PRIVATE_AUCTION,
-    PRE_PUBLIC_AUCTION,
-    PUBLIC_AUCTION,
-    PRE_MINT,
-    PRE_REVEAL,
-    STAKING
-}
+import ModalTarget from './ModalTarget';
+import DisplayState from './DisplayState';
 
-export default ApplicationState;
+export default interface ApplicationState {
+    modalOpen: boolean;
+    modalTarget: ModalTarget;
+    state: DisplayState;
+}

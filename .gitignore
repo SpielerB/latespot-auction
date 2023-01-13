@@ -6,6 +6,7 @@ dapp-old
 
 node_modules
 .env
+.env.production
 coverage
 coverage.json
 typechain
@@ -13,3 +14,5 @@ typechain
 #Hardhat files
 eth/cache
 eth/artifacts
+
+yarn-error.log

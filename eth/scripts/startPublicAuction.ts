@@ -8,7 +8,7 @@ async function main() {
     const signer = new Wallet(process.env.OWNER_PRIVATE_KEY as string, ethers.provider);
     const contract = new Contract(address, contractData.abi, signer);
     // price, supply, ticketsPerWallet
-    await contract.startPublicAuction(ethers.utils.parseEther('0.01'), 8000, 5);
+    await contract.startPublicAuction(ethers.utils.parseEther('0.001'), 8000, 5);
     console.log("Public auction has been started")
 }
 

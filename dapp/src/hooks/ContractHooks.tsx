@@ -1,10 +1,10 @@
 import {useSigner} from './WalletHooks';
-import {useContractData} from '../store/reducer/ContractDataReducer';
 import {useContract as useWagmiContract} from 'wagmi';
+import {useContractMetadata} from '../store/contract/ContractReducer';
 
 export const useEtherContract = () => {
     const signerOrProvider = useSigner();
-    const {started, contractAddress, abi} = useContractData();
+    const {started, contractAddress, abi} = useContractMetadata();
     const contract = useWagmiContract({address: contractAddress, abi, signerOrProvider})
     return signerOrProvider && started ? contract : undefined;
 }

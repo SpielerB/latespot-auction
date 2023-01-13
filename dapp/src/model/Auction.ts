@@ -1,5 +1,3 @@
-import {BigNumber} from 'ethers';
-
 export default interface Auction {
     hasStarted: boolean;
     isActive: boolean;
@@ -8,5 +6,5 @@ export default interface Auction {
     ticketsSold: number;
     ticketSupply: number;
     ticketLimit: number;
-    price: BigNumber;
+    price: string;
 }

@@ -4,9 +4,8 @@ import App from './app/App'
 import './index.css'
 import {Web3Configuration} from './web3/Web3Configuration';
 import {Provider} from 'react-redux';
-import Store from './store/Store';
-import {fetchContractData} from './store/reducer/ContractDataReducer';
-import Web3Manager from './web3/Web3Manager';
+import store from './store/Store';
+import ContractManager from './web3/ContractManager';
 
 // Add root tag to end of the body.
 const root = document.createElement('div');
@@ -27,16 +26,13 @@ if (desktopNavElement && mobileNavElement) {
     clearChildren(desktopNavElement);
     clearChildren(mobileNavElement);
 
-    // Start fetching the contract data
-    Store.dispatch(fetchContractData());
-
     const Index = () => {
         return (
             <React.StrictMode>
-                <Provider store={Store}>
+                <Provider store={store}>
                     <Web3Configuration>
                         <App desktopNavElement={desktopNavElement} mobileNavElement={mobileNavElement}/>
-                        <Web3Manager/>
+                        <ContractManager/>
                     </Web3Configuration>
                 </Provider>
             </React.StrictMode>

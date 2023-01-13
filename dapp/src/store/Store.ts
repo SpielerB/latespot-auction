@@ -1,25 +1,28 @@
-import {AnyAction, applyMiddleware, configureStore, Dispatch, Middleware} from '@reduxjs/toolkit';
-import RootReducer from './reducer/RootReducer';
-import {composeWithDevTools} from '@redux-devtools/extension';
+import {AnyAction, combineReducers, configureStore, Dispatch, Middleware} from '@reduxjs/toolkit';
 import thunk from 'redux-thunk';
 import logger from 'redux-logger'
+import {useDispatch} from 'react-redux';
+import ApplicationReducer from './application/ApplicationReducer';
+import ContractReducer from './contract/ContractReducer';
 
-const middleware: Middleware<{}, any, Dispatch<AnyAction>>[] = [thunk];
-if (process.env.NODE_ENV === "development") {
-    middleware.push(logger);
+const additionalMiddlewares: Middleware<{}, any, Dispatch<AnyAction>>[] = [thunk];
+if (import.meta.env.DEV) {
+    additionalMiddlewares.push(logger);
 }
 
-const composedEnhancer = composeWithDevTools(
-    // Add whatever middleware you actually want to use here
-    applyMiddleware(...middleware)
-    // other store enhancers if any
-);
-
-const Store = configureStore({
-    reducer: RootReducer,
-    enhancers: [composedEnhancer]
+export const rootReducer = combineReducers({
+    application: ApplicationReducer,
+    contract: ContractReducer
 });
 
-export default Store;
-export type RootState = ReturnType<typeof Store.getState>;
-export type AppDispatch = typeof Store.dispatch;
+export type RootState = ReturnType<typeof rootReducer>;
+
+const store = configureStore({
+    reducer: rootReducer,
+    middleware: getDefaultMiddleware => getDefaultMiddleware().concat(additionalMiddlewares)
+});
+
+export type AppDispatch = typeof store.dispatch;
+export const useAppDispatch = (): AppDispatch => useDispatch<AppDispatch>();
+
+export default store;

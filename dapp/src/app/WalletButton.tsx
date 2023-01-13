@@ -1,11 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import {useDispatch} from 'react-redux';
-import {openModal} from '../store/reducer/ModalReducer';
 import {useWeb3Modal} from '@web3modal/react';
 import {useAccount} from 'wagmi';
-import {useApplicationState} from '../store/reducer/ApplicationStateReducer';
-import ApplicationState from '../model/ApplicationState';
+import {openModal, useDisplayState} from '../store/application/ApplicationReducer';
+import DisplayState from '../model/DisplayState';
+import {useAppDispatch} from '../store/Store';
+import ModalTarget from '../model/ModalTarget';
 
 export interface WalletButtonProps extends ButtonProps {
     portalElement: Element | DocumentFragment;
@@ -24,12 +24,11 @@ const buttonClassNames = (mobile?: boolean) => {
 }
 
 const ConnectWalletButton = ({mobile}: ButtonProps) => {
-    const dispatch = useDispatch();
     const {isOpen, open} = useWeb3Modal();
     const {isReconnecting, isConnected, isConnecting} = useAccount();
 
     const classNames = buttonClassNames(mobile);
-    if (isOpen || isReconnecting || isConnecting) {
+    if (isOpen && (isReconnecting || isConnecting)) {
         return (
             <button className={classNames} disabled>
                 Connecting...
@@ -52,37 +51,38 @@ const ConnectWalletButton = ({mobile}: ButtonProps) => {
 }
 
 const ClaimTicketsButton = ({mobile}: ButtonProps) => {
-    const dispatch = useDispatch();
+    const dispatch = useAppDispatch();
+    const displayState = useDisplayState();
 
     return (
-        <button className={buttonClassNames(mobile)} onClick={() => dispatch(openModal())}>
+        <button className={buttonClassNames(mobile)} onClick={() => dispatch(openModal(ModalTarget.AUCTION))}>
             Claim Tickets
         </button>
     );
 }
 
 const StakeButton = ({mobile}: ButtonProps) => {
-    const dispatch = useDispatch();
+    const dispatch = useAppDispatch();
 
     return (
-        <button className={buttonClassNames(mobile)} onClick={() => dispatch(openModal())}>
+        <button className={buttonClassNames(mobile)} onClick={() => dispatch(openModal(ModalTarget.STAKING_CONSOLE))}>
             Stake
         </button>
     );
 }
 
 const WalletButton = ({portalElement, mobile}: WalletButtonProps) => {
-    const applicationState = useApplicationState();
+    const applicationState = useDisplayState();
     let button;
     // Disable inspection for this because the other application states are not initially known
     // noinspection JSUnreachableSwitchBranches
     switch (applicationState) {
-        case ApplicationState.PRIVATE_AUCTION:
-        case ApplicationState.PRE_PUBLIC_AUCTION:
-        case ApplicationState.PUBLIC_AUCTION:
+        case DisplayState.PRIVATE_AUCTION:
+        case DisplayState.PRE_PUBLIC_AUCTION:
+        case DisplayState.PUBLIC_AUCTION:
             button = <ClaimTicketsButton mobile={mobile}/>;
             break;
-        case ApplicationState.STAKING:
+        case DisplayState.STAKING:
             button = <StakeButton mobile={mobile}/>;
             break;
         default:

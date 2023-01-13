@@ -4,16 +4,20 @@ import {Web3Modal} from "@web3modal/react";
 
 import {configureChains, createClient, mainnet, WagmiConfig} from "wagmi";
 import React from 'react';
-import {hardhat, localhost} from '@wagmi/chains';
-
-const chains = [mainnet, localhost, hardhat];
+import {hardhat} from '@wagmi/chains';
 
 export const projectId = "d8e0f3f439c36190b67fbb7fca038784";
+
+let chains = [mainnet];
+if (import.meta.env.DEV) {
+    chains = [hardhat];
+}
 
 // Wagmi client
 const {provider} = configureChains(chains, [
     walletConnectProvider({projectId}),
 ]);
+
 const wagmiClient = createClient({
     autoConnect: true,
     connectors: modalConnectors({appName: "web3Modal", chains}),
