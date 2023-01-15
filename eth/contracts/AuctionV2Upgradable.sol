@@ -3,37 +3,48 @@ pragma solidity ^0.8.9;
 
 
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721RoyaltyUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./@rarible/royalties-upgradeable/contracts/RoyaltiesV2Upgradeable.sol";
+import "./@chainlink/VRFConsumerBaseV2Upgradeable.sol";
+import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 
 /// @title 2 Phase auction and minting for the latespot NFT project
-contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, OwnableUpgradeable, RoyaltiesV2Upgradeable {
+contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, OwnableUpgradeable, RoyaltiesV2Upgradeable, VRFConsumerBaseV2Upgradeable {
     using MathUpgradeable for uint;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
     using ECDSAUpgradeable for bytes32;
     using ECDSAUpgradeable for bytes;
 
+    using StringsUpgradeable for uint256;
+
     /*
         Constants
     */
     uint96 private constant _royaltyPercentageBasisPoints = 1000;
-    uint256 public constant ticketsPerWallet = 5;
+
+    bytes32 keyHash;
+    uint32 constant callbackGasLimit = 100000;
+    uint16 constant requestConfirmations = 3;
+    uint32 constant numWords = 1;
 
     /*
         Initialisation
     */
+    address private _vrfCoordinator;
+    uint64 private _chainLinkSubscriptionId;
     CountersUpgradeable.Counter private _tokenCounter;
     uint256 public preMintCount;
-    uint256 public totalSupply;
 
     address public signatureAddress;
 
     string private __baseURI;
+    string private __realURI;
     string private _contractURI;
 
     mapping(address => bool) private _whitelistMap;
@@ -50,13 +61,14 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
         Auction
     */
     CountersUpgradeable.Counter private _ticketCounter;
-    mapping(uint256 => address) private _ticketHolderMap;
+    address[] private _ticketHolders;
 
     bool public privateAuctionStarted;
     bool public privateAuctionStopped;
     uint256 public privateAuctionPrice;
     uint256 public privateAuctionTicketCount;
     uint256 public privateAuctionTicketSupply;
+    uint256 public privateAuctionTicketsPerWallet;
     mapping(address => uint256) public privateAuctionTicketMap;
 
     bool public publicAuctionStarted;
@@ -64,20 +76,42 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
     uint256 public publicAuctionPrice;
     uint256 public publicAuctionTicketCount;
     uint256 public publicAuctionTicketSupply;
+    uint256 public publicAuctionTicketsPerWallet;
     mapping(address => uint256) public publicAuctionTicketMap;
 
-    function initialize(string memory tokenName_, string memory tokenSymbol_, uint256 totalTicketSupply_, address signatureAddress_, string memory baseURI_, string memory contractURI_) public initializer {
+    /*
+        Mint
+    */
+    uint256 private _holderIndex;
+    uint256 private _nextHolderTokenIndex;
+
+    /*
+        Reveal
+    */
+    bool public revealed;
+    uint256 public seed;
+
+    function initialize(string memory tokenName_, string memory tokenSymbol_, address signatureAddress_, string memory baseURI_, string memory contractURI_, address vrfCoordinator_, uint64 chainLinkSubscriptionId_, bytes32 keyHash_) public initializer {
         __ERC721_init(tokenName_, tokenSymbol_);
         __ERC721Royalty_init();
         __Ownable_init();
+        __VRFConsumerBaseV2_init(vrfCoordinator_);
 
-        totalSupply = totalTicketSupply_;
         signatureAddress = signatureAddress_;
         __baseURI = baseURI_;
         _contractURI = contractURI_;
+        _vrfCoordinator = vrfCoordinator_;
+        _chainLinkSubscriptionId = chainLinkSubscriptionId_;
+        keyHash = keyHash_;
 
         _setDefaultRoyalty(owner(), _royaltyPercentageBasisPoints);
-        // 10% royalties
+    }
+
+    /*
+    * The total supply consisting of the premint + private auction + public auction tokens
+    */
+    function totalSupply() public view returns (uint256) {
+        return preMintCount + privateAuctionTicketCount + publicAuctionTicketCount;
     }
 
     /*
@@ -92,45 +126,49 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
     /*
     * Removes the given addresses from the whitelist for the private auction
     */
-    function DeWhitelist(address[] memory addresses) public onlyOwner {
+    function unWhitelist(address[] memory addresses) public onlyOwner {
         for (uint256 i = 0; i < addresses.length; ++i) {
             delete _whitelistMap[addresses[i]];
         }
     }
 
-    function whitelisted() public returns (bool) {
+    function whitelisted() public view returns (bool) {
         return _whitelistMap[_msgSender()];
     }
 
-    function tickets() public returns (uint256) {
+    function tickets() public view returns (uint256) {
         return privateAuctionTicketMap[_msgSender()] + publicAuctionTicketMap[_msgSender()];
     }
 
     /*
     * Starts the public auction with a specific price and supply. This method may not be called once the auction has been started.
     */
-    function startPrivateAuction(uint256 price_, uint256 supply_) public onlyOwner {
-        require(!privateAuctionActive(), "Private auction has already been started");
+    function startPrivateAuction(uint256 price_, uint256 supply_, uint256 ticketsPerWallet_) public onlyOwner {
+        require(!privateAuctionStarted, "Private auction has already been started");
+        require(ticketsPerWallet_ > 0, "Requires at least 1 ticket per wallet");
         privateAuctionPrice = price_;
         privateAuctionTicketSupply = supply_;
         privateAuctionStarted = true;
+        privateAuctionTicketsPerWallet = ticketsPerWallet_;
     }
 
     /*
     * Returns true if the private auction has been started and not yet stopped. false otherwise
     */
     function privateAuctionActive() public view returns (bool) {
-        return privateAuctionStarted && !privateAuctionStopped;
+        return privateAuctionStarted && !privateAuctionStopped && privateAuctionTicketCount < privateAuctionTicketSupply;
     }
 
     /*
     * Buy (value/price) tokens while the private auction is active
     * Only whitelisted addresses may use this method
     */
-    function buyPrivate(bytes memory signature) public payable {
+    function buyPrivateAuction(bytes memory signature) public payable {
         // Basic check
         require(privateAuctionActive(), "Private auction is not active");
-        require(privateAuctionTicketCount < privateAuctionTicketSupply, "No tickets left for sale in the private auction");
+
+        // Whitelist check
+        require(_whitelistMap[_msgSender()], "Wallet is not whitelisted");
 
         // Signature check
         bytes32 hash = keccak256(abi.encode(_msgSender(), msg.value, "private")).toEthSignedMessageHash();
@@ -144,20 +182,17 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
         uint256 currentTickets = privateAuctionTicketMap[_msgSender()];
 
         // Ticket amount check
-        require(ticketsToBuy + currentTickets <= ticketsPerWallet, "Total ticket count is higher than the max allowed tickets per wallet for the private auction");
-        require(privateAuctionTicketCount + ticketsToBuy <= privateAuctionTicketSupply, "There are not enough tickets left the private auction");
-
-        uint256 newTicketCount = uint256(ticketsToBuy + currentTickets);
+        require(ticketsToBuy + currentTickets <= privateAuctionTicketsPerWallet, "Total ticket count is higher than the max allowed tickets per wallet for the private auction");
+        require(privateAuctionTicketCount + ticketsToBuy <= privateAuctionTicketSupply, "There are not enough tickets left in the private auction");
 
         privateAuctionTicketCount += ticketsToBuy;
         privateAuctionTicketMap[_msgSender()] += ticketsToBuy;
-        for (uint256 i = 0; i < ticketsToBuy; ++i) {
-            _ticketHolderMap[_ticketCounter.current()] = _msgSender();
-            _ticketCounter.increment();
+        if (currentTickets == 0) {
+            _ticketHolders.push(_msgSender());
         }
     }
 
-    function privateTickets() public returns (uint256) {
+    function privateAuctionTickets() public view returns (uint256) {
         return privateAuctionTicketMap[_msgSender()];
     }
 
@@ -165,36 +200,37 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
     * Stops the private auction. May only be called if the private auction is active.
     */
     function stopPrivateAuction() public onlyOwner {
-        require(privateAuctionActive(), "Private auction is not active");
+        require(privateAuctionStarted, "Private auction has not been started");
         privateAuctionStopped = true;
     }
 
     /*
     * Starts the public auction with a specific price and supply. This method may not be called once the auction has been started.
     */
-    function startPublicAuction(uint256 price_, uint256 supply_) public onlyOwner {
-        require(!publicAuctionActive(), "Auction has already been started");
+    function startPublicAuction(uint256 price_, uint256 supply_, uint256 ticketsPerWallet_) public onlyOwner {
+        require(!publicAuctionActive(), "Public auction has already been started");
+        require(privateAuctionStarted, "Public auction must start after private auction");
         require(!privateAuctionActive(), "Private auction is still active");
-        require(!privateAuctionStarted, "Requires private auction to be finished");
+        require(ticketsPerWallet_ > 0, "Requires at least 1 ticket per wallet");
         publicAuctionStarted = true;
         publicAuctionPrice = price_;
         publicAuctionTicketSupply = supply_;
+        publicAuctionTicketsPerWallet = ticketsPerWallet_;
     }
 
     /*
     * Returns true if the public auction has been started and not yet stopped. false otherwise
     */
     function publicAuctionActive() public view returns (bool) {
-        return publicAuctionStarted && !publicAuctionStopped;
+        return publicAuctionStarted && !publicAuctionStopped && publicAuctionTicketCount < publicAuctionTicketSupply;
     }
 
     /*
     * Buy (value/price) tokens while the public auction is active
     */
-    function buyPublic(bytes memory signature) public payable {
+    function buyPublicAuction(bytes memory signature) public payable {
         // Basic check
         require(publicAuctionActive(), "Public auction is not active");
-        require(publicAuctionTicketCount < publicAuctionTicketSupply, "No tickets left for sale in the public auction");
 
         // Signature check
         bytes32 hash = keccak256(abi.encode(_msgSender(), msg.value, "public")).toEthSignedMessageHash();
@@ -209,20 +245,17 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
         uint256 currentTickets = publicAuctionTicketMap[_msgSender()];
 
         // Ticket amount check
-        require(ticketsToBuy + currentTickets <= ticketsPerWallet, "Total ticket count is higher than the max allowed tickets per wallet for the public auction");
-        require(publicAuctionTicketCount + ticketsToBuy <= publicAuctionTicketSupply, "There are not enough tickets left the public auction");
-
-        uint256 newTicketCount = uint256(ticketsToBuy + currentTickets);
+        require(ticketsToBuy + currentTickets <= publicAuctionTicketsPerWallet, "Total ticket count is higher than the max allowed tickets per wallet for the public auction");
+        require(publicAuctionTicketCount + ticketsToBuy <= publicAuctionTicketSupply, "There are not enough tickets left in the public auction");
 
         publicAuctionTicketCount += ticketsToBuy;
         publicAuctionTicketMap[_msgSender()] += ticketsToBuy;
-        for (uint256 i = 0; i < ticketsToBuy; ++i) {
-            _ticketHolderMap[_ticketCounter.current()] = _msgSender();
-            _ticketCounter.increment();
+        if (currentTickets == 0 && privateAuctionTicketMap[_msgSender()] == 0) {
+            _ticketHolders.push(_msgSender());
         }
     }
 
-    function publicTickets() public returns (uint256) {
+    function publicAuctionTickets() public view returns (uint256) {
         return publicAuctionTicketMap[_msgSender()];
     }
 
@@ -230,7 +263,7 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
     * Stops the public auction
     */
     function stopPublicAuction() public onlyOwner {
-        require(publicAuctionActive(), "Auction is not running");
+        require(publicAuctionStarted, "Public auction has not been started");
         publicAuctionStopped = true;
     }
 
@@ -249,22 +282,68 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
     /*
     * Mint n tokens
     */
-    function mintAndDistribute(uint256 count) public onlyOwner {
-        uint256 end = _tokenCounter.current() + count;
-        uint256 total = preMintCount + _ticketCounter.current();
-        if (end > total) {
-            end = total;
+    function mintAndDistribute(uint256 count_) public onlyOwner {
+        uint256 localIndex = _tokenCounter.current();
+        uint256 localHolderIndex = _holderIndex;
+        uint256 localNextHolderTokenIndex = _nextHolderTokenIndex;
+
+        uint256 localEnd = localIndex + count_;
+        uint256 localTotal = totalSupply();
+        if (localEnd > localTotal) {
+            localEnd = localTotal;
         }
-        for (uint256 i = _tokenCounter.current(); i < end; _tokenCounter.increment()) {
-            _safeMint(owner(), i);
+
+        require(_tokenCounter.current() < localEnd, "All tokens have been minted");
+
+        address localHolder = _ticketHolders[localHolderIndex];
+        uint256 localTotalTickets = privateAuctionTicketMap[localHolder] + publicAuctionTicketMap[localHolder];
+
+        while (_tokenCounter.current() < localEnd) {
+            if (localNextHolderTokenIndex >= localTotalTickets) {
+                localNextHolderTokenIndex = 0;
+                localHolder = _ticketHolders[++localHolderIndex];
+                localTotalTickets = privateAuctionTicketMap[localHolder] + publicAuctionTicketMap[localHolder];
+            }
+
+            _safeMint(localHolder, _tokenCounter.current());
+            localNextHolderTokenIndex++;
+            _tokenCounter.increment();
         }
+        _nextHolderTokenIndex = localNextHolderTokenIndex;
+        _holderIndex = localHolderIndex;
     }
 
     /*
-    * Reveals the tokens by changing the baseURI_ to the correct path
+    * Returns true of all tokens have been minted
     */
-    function reveal(string memory baseURI_) public onlyOwner {
-        // TODO: chainlink integration
+    function minted() public view returns (bool) {
+        return publicAuctionStopped && _tokenCounter.current() == totalSupply();
+    }
+
+    /*
+    * Requests randomness from the oracle
+    */
+    function requestReveal(string memory realURI_) public onlyOwner {
+        VRFCoordinatorV2Interface(_vrfCoordinator).requestRandomWords(
+            keyHash,
+            _chainLinkSubscriptionId,
+            3,
+            100000,
+            1
+        );
+        __realURI = realURI_;
+    }
+
+    function fulfillRandomWords(uint256, uint256[] memory randomWords) internal override {
+        reveal(randomWords[0]);
+    }
+
+    /*
+    * Reveals the real metadata of the token
+    */
+    function reveal(uint256 seed_) private {
+        seed = seed_;
+        revealed = true;
     }
 
     /*
@@ -277,12 +356,14 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
     }
 
     /*
-    * Stakes the token
+    * Stakes the defined token
     * The token will be transferred to the contract until un-staked
     */
     function stake(uint256 tokenId_) public {
-        require(ownerOf(tokenId_) == _msgSender(), "This token does not belong to the sender wallet");
+        require(revealed, "Tokens have not been revealed");
         require(_stakeStartTimeMap[tokenId_] == 0, "Token has already been staked");
+        require(_stakeLevelTimeMap[tokenId_] == 0, "Token has already been staked beyond level 0");
+        require(ownerOf(tokenId_) == _msgSender(), "This token does not belong to the sender wallet");
 
         _stakeOwnerMap[tokenId_] = _msgSender();
         _stakeStartTimeMap[tokenId_] = block.timestamp;
@@ -290,20 +371,51 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
         transferFrom(_msgSender(), address(this), tokenId_);
     }
 
+    /*
+    * Returns a boolean indicating if the token is currently staked
+    */
     function staked(uint256 tokenId_) public view returns (bool) {
         return _stakeStartTimeMap[tokenId_] != 0;
+    }
+
+    /*
+    * Returns a boolean indicating if the token is currently staked
+    */
+    function tokens() public returns (uint256[] memory) {
+        uint256[] memory tokens;
+        uint256 index = 0;
+        for (uint256 i = 0; i < totalSupply(); ++i) {
+            if (ownerOf(i) == _msgSender() || _stakeOwnerMap[i] == _msgSender()) {
+                tokens[index++] = i;
+            }
+        }
+        return tokens;
     }
 
     /*
     * Unlocks a token. This will unlock the token for trading and set the stake level for this token.
     */
     function unStake(uint256 tokenId_) public {
-        require(_stakeOwnerMap[tokenId_] == _msgSender(), "Token does not belong to the sender wallet");
         require(_stakeStartTimeMap[tokenId_] != 0, "Token has not been staked");
+        require(_stakeOwnerMap[tokenId_] == _msgSender(), "Token does not belong to the sender wallet");
 
-        _stakeLevelTimeMap[tokenId_] = block.timestamp - _stakeStartTimeMap[tokenId_];
+        uint256 time = block.timestamp - _stakeStartTimeMap[tokenId_];
+        if (_definedStakeLevels[0] <= time) {
+            _stakeLevelTimeMap[tokenId_] = time;
+        }
+        _stakeStartTimeMap[tokenId_] = 0;
 
-        transferFrom(address(this), _msgSender(), tokenId_);
+        delete _stakeOwnerMap[tokenId_];
+
+        _transfer(address(this), _msgSender(), tokenId_);
+    }
+
+    function stakeTime(uint256 token) public view returns (uint256) {
+        uint256 stakeTime = _stakeLevelTimeMap[token];
+        if (stakeTime == 0 && _stakeStartTimeMap[token] > 0) {
+            stakeTime = block.timestamp - _stakeStartTimeMap[token];
+        }
+        return stakeTime;
     }
 
     /*
@@ -317,12 +429,20 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
 
         uint256 level = 0;
         for (uint256 i = 0; i < _definedStakeLevels.length; ++i) {
-            if (_definedStakeLevels[i] > stakeTime) {
+            if (stakeTime < _definedStakeLevels[i]) {
                 break;
             }
             level = i + 1;
         }
         return level;
+    }
+
+    function tokenURI(uint256 tokenId) public view override(ERC721Upgradeable) returns (string memory){
+        if (!revealed) return __baseURI;
+        uint256 level = stakeLevel(tokenId);
+        uint256 offset = seed % totalSupply();
+        uint256 metaId = (tokenId + offset) % totalSupply();
+        return string.concat(__realURI, '/meta_', metaId.toString(), '_', level.toString(), '.json');
     }
 
     /*
@@ -332,6 +452,10 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
         _definedStakeLevels = levelTimes;
     }
 
+    function stakeLevels() public view returns (uint256[] memory) {
+        return _definedStakeLevels;
+    }
+
     function getRaribleV2Royalties(uint256) external view returns (LibPart.Part[] memory) {
         LibPart.Part[] memory royalties = new LibPart.Part[](1);
         royalties[0].value = _royaltyPercentageBasisPoints;
@@ -339,11 +463,13 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
         return royalties;
     }
 
+
     /*
        compatibility functions
     */
-    // No burning allowed
-    function _burn(uint256 tokenId) internal override(ERC721Upgradeable, ERC721RoyaltyUpgradeable) {}
+    function _burn(uint256 tokenId) internal override(ERC721Upgradeable, ERC721RoyaltyUpgradeable) {
+        revert("Burning is not allowed");
+    }
 
     /**
      * @dev See {IERC165-supportsInterface}.
