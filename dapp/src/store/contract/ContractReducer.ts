@@ -29,6 +29,8 @@ export const buyTickets = createAsyncThunk<void, number, { state: RootState }>("
     const isPublicAuctionActive = model.publicAuction.isActive;
 
     if (!isPublicAuctionActive && !isPrivateAuctionActive) throw "No active auction.";
+    if (isPrivateAuctionActive && !model.whitelisted) throw "Current wallet not whitelisted";
+
     const price = BigNumber.from(isPrivateAuctionActive ? model.privateAuction.price : model.publicAuction.price);
     const value = price.mul(ticketCount);
     const address = await syncedContract.signer.getAddress();
@@ -39,7 +41,10 @@ export const buyTickets = createAsyncThunk<void, number, { state: RootState }>("
         headers: {
             "Content-Type": "application/json"
         }
-    })
+    });
+
+    if (!response.ok) throw `HTTP ${response.status}: ${response.statusText}`;
+
     const signature = await response.text()
     if (isPrivateAuctionActive) {
         await syncedContract.buyPrivateAuction(signature, {value});
