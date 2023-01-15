@@ -239,7 +239,12 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
 
             describe('defineStakeLevels', function () {
                 it('Should set the correct stake levels', async () => {
-                    await contract.defineStakeLevels([60 * 60 * 24 * 30, 60 * 60 * 24 * 60]);
+                    const levels = [
+                        60 * 60 * 24 * 30, // 30 days
+                        60 * 60 * 24 * 60 // 60 days
+                    ];
+                    await contract.defineStakeLevels(levels);
+                    expect((await contract.stakeLevels()).map((n: BigNumber) => n.toNumber())).to.contain.all.members(levels);
                 });
             });
             context('withdraw', function () {
