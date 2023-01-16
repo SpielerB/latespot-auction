@@ -10,14 +10,14 @@ export const openModal = createAction<ModalTarget>("application/modal/open");
 export const closeModal = createAction("application/modal/close");
 
 const initialState = {
-    contractState: DisplayState.DISCONNECTED,
+    displayState: DisplayState.DISCONNECTED,
     modalOpen: false,
     modalTarget: ModalTarget.AUCTION
 };
 
 const reducer = createReducer<ApplicationState>(initialState, builder => {
     builder.addCase(setContractState, (state, action) => {
-        state.state = action.payload;
+        state.displayState = action.payload;
     });
     builder.addCase(openModal, (state, action) => {
         state.modalOpen = true;
@@ -29,7 +29,7 @@ const reducer = createReducer<ApplicationState>(initialState, builder => {
 });
 
 export const useApplication = () => createSelectorHook()((state: RootState) => state.application);
-export const useDisplayState = (): DisplayState => createSelectorHook()((state: RootState) => state.application.state);
+export const useDisplayState = (): DisplayState => createSelectorHook()((state: RootState) => state.application.displayState);
 export const useModalOpen = () => createSelectorHook()((state: RootState) => state.application.modalOpen);
 export const useModalTarget = () => createSelectorHook()((state: RootState) => state.application.modalTarget);
 
