@@ -9,6 +9,8 @@
     bottom: 0;
     right: 0;
     background-color: rgba(20, 20, 20, 0.75);
+    padding-right: 1.4em;
+    padding-left: 1.4em;
     z-index: 1000000;
     display: flex;
     justify-content: space-around;
