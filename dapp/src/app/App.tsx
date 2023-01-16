@@ -3,34 +3,40 @@ import React from 'react';
 import WalletButton from './WalletButton';
 
 import './App.css'
-import {buyTickets, useBuyTransaction, useContractModel} from '../store/contract/ContractReducer';
-import {useDisplayState, useModalTarget} from '../store/application/ApplicationReducer';
-import {useAppDispatch} from '../store/Store';
+import {useDisplayState} from '../store/application/ApplicationReducer';
+import PrivateAuction from "./auction/private/PrivateAuction";
+import PrePublicAuction from "./auction/PrePublicAuction";
+import PreMint from "./preStaking/PreMint";
+import PublicAuction from "./auction/public/PublicAuction";
+import DisplayState from "../model/DisplayState";
 
 interface AppProps {
     mobileNavElement: Element | DocumentFragment;
     desktopNavElement: Element | DocumentFragment;
 }
 
-function App({mobileNavElement, desktopNavElement}: AppProps) {
-    const dispatch = useAppDispatch();
-    const contractModel = useContractModel();
+const ModalContent = () => {
     const displayState = useDisplayState();
-    const modalTarget = useModalTarget();
-    const transaction = useBuyTransaction();
 
+    switch (displayState) {
+        case DisplayState.PRIVATE_AUCTION:
+            return <PrivateAuction/>;
+        case DisplayState.PRE_PUBLIC_AUCTION:
+            return <PrePublicAuction/>;
+        case DisplayState.PUBLIC_AUCTION:
+            return <PublicAuction/>;
+        case DisplayState.PRE_MINT:
+            return <PreMint/>;
+        default:
+            return <h1>Display not implemented</h1>
+    }
+}
+
+function App({mobileNavElement, desktopNavElement}: AppProps) {
     return (
         <React.Fragment>
             <ModalPage>
-                <div>DisplayState: {displayState}</div>
-                <div>ModalTarget: {modalTarget}</div>
-                <div>Whitelisted: {contractModel?.whitelisted ? "Yes" : "No"}</div>
-                <button onClick={() => dispatch(buyTickets(2))}>Buy</button>
-                <div>Pending Transaction: {transaction?.pending ? "Yes" : "No"}</div>
-                <div>Successful Transaction: {transaction?.successful ? "Yes" : "No"}</div>
-                <div>Error Transaction: {transaction?.error ? "Yes" : "No"}</div>
-                <div>Contract Error: {transaction?.error}</div>
-
+                <ModalContent/>
             </ModalPage>
             <WalletButton portalElement={desktopNavElement}/>
             <WalletButton portalElement={mobileNavElement} mobile/>
