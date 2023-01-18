@@ -22,7 +22,10 @@
     flex-grow: 1;
     margin: 16px;
     background-color: rgb(15, 15, 15);
-    padding: 48px 16px 16px
+    border-radius: 5px;
+    border-color: #0cffcf;
+    border-style: solid;
+    padding: 16px 16px 16px
 }
 
 .modal-close {
