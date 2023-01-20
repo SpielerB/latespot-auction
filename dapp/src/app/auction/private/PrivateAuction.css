@@ -1,8 +1,36 @@
 .mint-section {
     padding-top: 5em;
-    padding-bottom: 1.4em
+    padding-bottom: 1.4em;
+    height: initial;
 }
 
-.mint-header {
-    margin-bottom: 3.1em
+.mint-icon {
+    margin-right: .571em;
+}
+
+.mint-mint-p {
+    color: #0cffcf;
+    font-size: 1.143em;
+    line-height: 1.4em;
+    font-weight: 400;
+    margin-bottom: 0.2em;
+}
+
+.mint-wallet {
+    display: flex;
+    margin-bottom: 2em;
+}
+
+.mint-wallet-p {
+    line-height: 1.4em;
+}
+
+.mint-info {
+    max-width: 70em;
+    margin-bottom: 4em;
+
+}
+
+.mint-h3 {
+    display: inline;
 }
