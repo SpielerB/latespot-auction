@@ -147,7 +147,7 @@ export const updateContractSyncLoop = createAsyncThunk<void, EthersContract | un
         const existingContractModel = thunkAPI.getState().contract.contractModel;
         if (!deepEqual(updatedContractModel, existingContractModel)) {
             thunkAPI.dispatch(updateContractModel(updatedContractModel));
-            const currentApplicationState = thunkAPI.getState().application.state;
+            const currentApplicationState = thunkAPI.getState().application.displayState;
             let applicationState = DisplayState.PRE_AUCTION;
             if (updatedContractModel.privateAuction.hasStarted) {
                 applicationState = DisplayState.PRIVATE_AUCTION;
