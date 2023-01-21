@@ -1,4 +1,4 @@
-import {createAction, createAsyncThunk, createReducer, Dispatch} from '@reduxjs/toolkit';
+import {createAction, createAsyncThunk, createReducer} from '@reduxjs/toolkit';
 import {createSelectorHook} from 'react-redux';
 import {RootState} from '../Store';
 import Contract from '../../model/Contract';
@@ -111,12 +111,12 @@ const internalContractSync = async (contract: EthersContract): Promise<Contract>
     };
 }
 
-export const updateContractSyncLoop = (contract: EthersContract | undefined | null) => async (dispatch: Dispatch, getState: () => RootState) => {
+export const updateContractSyncLoop = createAsyncThunk<void, EthersContract | undefined | null, { state: RootState }>("contract/sync/update", (contract, thunkAPI) => {
     const contractRemoved = syncedContract && !contract
     syncedContract = contract;
     if (!contract) {
         if (contractRemoved) {
-            dispatch(updateContractModel(undefined));
+            thunkAPI.dispatch(updateContractModel(undefined));
         }
         return;
     }
@@ -128,10 +128,10 @@ export const updateContractSyncLoop = (contract: EthersContract | undefined | nu
         if (syncedContract !== contract) {
             return;
         }
-        const existingContractModel = getState().contract.contractModel;
+        const existingContractModel = thunkAPI.getState().contract.contractModel;
         if (!deepEqual(updatedContractModel, existingContractModel)) {
-            dispatch(updateContractModel(updatedContractModel));
-            const currentApplicationState = getState().application.state;
+            thunkAPI.dispatch(updateContractModel(updatedContractModel));
+            const currentApplicationState = thunkAPI.getState().application.state;
             let applicationState = DisplayState.PRE_AUCTION;
             if (updatedContractModel.privateAuction.hasStarted) {
                 applicationState = DisplayState.PRIVATE_AUCTION;
@@ -152,7 +152,7 @@ export const updateContractSyncLoop = (contract: EthersContract | undefined | nu
                 applicationState = DisplayState.STAKING;
             }
             if (applicationState !== currentApplicationState) {
-                dispatch(setContractState(applicationState));
+                thunkAPI.dispatch(setContractState(applicationState));
             }
         }
         if (syncedContract === contract) {
@@ -161,7 +161,7 @@ export const updateContractSyncLoop = (contract: EthersContract | undefined | nu
 
     };
     setTimeout(syncContractLoop, 0);
-}
+});
 
 const initialState: ContractState = {
     metadata: {
@@ -178,6 +178,10 @@ const reducer = createReducer(initialState, builder => {
         .addCase(syncContract.fulfilled, (state, action) => {
             state.contractModel = action.payload;
             state.transactionError = undefined;
+        })
+        .addCase(syncContract.rejected, (state, action) => {
+            state.contractModel = undefined;
+            state.transactionError = action.error.message;
         })
         .addCase(buyTickets.pending, (state) => {
             state.pendingTransaction = true;
