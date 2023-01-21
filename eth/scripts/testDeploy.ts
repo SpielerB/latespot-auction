@@ -83,6 +83,8 @@ async function main() {
 
     console.log(`Deploying contracts on network '${network.name}'`)
     const {price} = (await (await fetch('https://api.binance.com/api/v3/avgPrice?symbol=ETHBUSD')).json()) as any
+    const {result: {ProposeGasPrice}} = (await (await fetch("https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=CUU9ZE65KAS27K71PQPIAHRTTQG9781B8J")).json());
+    const gasPrice = ProposeGasPrice * 1e9;
     console.log(`Current ETH price: ${price} BUSD`)
     const deployed: { [key: string]: Contract } = {};
     for (const {name, proxy, upgrade, params, upgradeAddress} of contracts) {
@@ -107,7 +109,7 @@ async function main() {
 
         await contract.deployed();
         const tx = await contract.deployTransaction.wait();
-        const gasCost = ethers.utils.formatEther(`${tx.effectiveGasPrice.mul(tx.gasUsed)}`);
+        const gasCost = ethers.utils.formatEther(`${tx.gasUsed.mul(gasPrice)}`);
 
         if (upgrade) {
             console.log(`Contract ${name} (${contract.address}) has been upgraded. (Costs ${gasCost} ETH or ${(+gasCost * price).toFixed(2)} BUSD)`);
