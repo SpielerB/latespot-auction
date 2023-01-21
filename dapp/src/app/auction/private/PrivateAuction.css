@@ -34,3 +34,11 @@
 .mint-h3 {
     display: inline;
 }
+
+.mint-buy-h4 {
+    color: #0cffcf;;
+}
+
+.mint-button:disabled {
+    background-color: gray;
+}
