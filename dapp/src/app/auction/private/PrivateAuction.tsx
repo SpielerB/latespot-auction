@@ -21,7 +21,7 @@ const MintHeader = () => {
 
     return (
         <div className="mint-header">
-            <h4 className="mint-h4">phase 1</h4>
+            <h4 className="mint-h4">phase #1</h4>
             <h1 className="mint-h1">WHITELIST SALE</h1>
             <div className="mint-mint-p">
                 You currently have {ticketsInWallet} tickets.
@@ -35,7 +35,7 @@ const MintHeader = () => {
                     className="mint-icon"
                 />
                 <div className="mint-live-p">
-                    Ticket Price: 42 USD = {ethereum} ETH
+                    Ticket Price: 42 USD = {ethereum} $ETH
                 </div>
             </div>
         </div>
@@ -95,12 +95,12 @@ const MintSalesForm = () => {
                     </select>
                 </div>
 
-                <div className="mint-buy-info">Phase 1: Max. {maxTicketsPerWallet} tickets per wallet
+                <div className="mint-buy-info">Phase #1: Max. {maxTicketsPerWallet} tickets per wallet
                 </div>
                 <h3 className="mint-h3">summary:</h3>
                 <div className="mint-buy-summary">
-                    {ethereum} ETH x {amount} {amount > 1 ? "tickets" : "ticket"} =
-                    <span className="mint-buy-summary-bold"> {totalPrice} ETH</span>
+                    {ethereum} $ETH x {amount} {amount > 1 ? "tickets" : "ticket"} =
+                    <span className="mint-buy-summary-bold"> {totalPrice} $ETH</span>
                 </div>
                 <button onClick={() => dispatch(buyTickets(amount))} type="submit" className="mint-button w-button"
                         disabled={!isEligible}>
@@ -126,7 +126,7 @@ const PrivateAuction = () => {
             <div className="mint-info">
                 <h3 className="mint-h3">ERC-721S BENEFITS</h3>
                 <p className="mint-info-p">
-                    You will only have to claim the tickets. Every other cost to mint the NFT is paid by our team
+                    You will only have to buy the tickets. Every other cost to mint the NFT is paid by our team
                     through the ERC-721S contract. We will bunk mint all NFTs after a maximum of 96 hours.
                 </p>
             </div>

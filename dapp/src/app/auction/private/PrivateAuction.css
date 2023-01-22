@@ -39,6 +39,12 @@
     color: #0cffcf;;
 }
 
+.mint-amount {
+    color: #0cffcf;
+    background-color: rgb(15, 15, 15);
+}
+
+
 .mint-button:disabled {
     background-color: gray;
 }
