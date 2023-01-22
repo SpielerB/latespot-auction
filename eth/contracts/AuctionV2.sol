@@ -1,4 +1,3 @@
-
 /// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.12;
 
@@ -14,7 +13,7 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
 import "./@rarible/royalties/contracts/@rarible/RoyaltiesV2.sol";
 import "./@rarible/royalties/contracts/@rarible/LibRoyaltiesV2.sol";
 
-/// @title 2 Phase auction and minting for the latespot NFT project
+/// @title 2 Phase auction and minting for the squirreldegens NFT project
 contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBaseV2 {
     using Math for uint;
     using Counters for Counters.Counter;
@@ -28,16 +27,14 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
         Constants
     */
     uint96 private constant _royaltyPercentageBasisPoints = 1000;
-
-
-    bytes32 immutable keyHash;
-    uint32 constant callbackGasLimit = 100000;
-    uint16 constant requestConfirmations = 3;
-    uint32 constant numWords =  1;
+    uint32 private constant callbackGasLimit = 100000;
+    uint16 private constant requestConfirmations = 3;
+    uint32 private constant numWords = 1;
 
     /*
         Initialisation
     */
+    bytes32 immutable keyHash;
     address private immutable _vrfCoordinator;
     uint64 private immutable _chainLinkSubscriptionId;
     Counters.Counter private _tokenCounter;
@@ -108,7 +105,7 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
     /*
     * The total supply consisting of the premint + private auction + public auction tokens
     */
-    function totalSupply() public view returns(uint256) {
+    function totalSupply() public view returns (uint256) {
         return preMintCount + privateAuctionTicketCount + publicAuctionTicketCount;
     }
 
@@ -220,7 +217,7 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
     * Returns true if the public auction has been started and not yet stopped. false otherwise
     */
     function publicAuctionActive() public view returns (bool) {
-        return publicAuctionStarted && !publicAuctionStopped  && publicAuctionTicketCount < publicAuctionTicketSupply;
+        return publicAuctionStarted && !publicAuctionStopped && publicAuctionTicketCount < publicAuctionTicketSupply;
     }
 
     /*
@@ -296,7 +293,7 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
         address localHolder = _ticketHolders[localHolderIndex];
         uint256 localTotalTickets = privateAuctionTicketMap[localHolder] + publicAuctionTicketMap[localHolder];
 
-        while(_tokenCounter.current() < localEnd) {
+        while (_tokenCounter.current() < localEnd) {
             if (localNextHolderTokenIndex >= localTotalTickets) {
                 localNextHolderTokenIndex = 0;
                 localHolder = _ticketHolders[++localHolderIndex];
@@ -315,9 +312,8 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
     * Returns true of all tokens have been minted
     */
     function minted() public view returns (bool) {
-       return publicAuctionStopped && _tokenCounter.current() == totalSupply();
+        return publicAuctionStopped && _tokenCounter.current() == totalSupply();
     }
-
     /*
     * Requests randomness from the oracle
     */
@@ -325,9 +321,9 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
         VRFCoordinatorV2Interface(_vrfCoordinator).requestRandomWords(
             keyHash,
             _chainLinkSubscriptionId,
-            3,
-            100000,
-            1
+            requestConfirmations,
+            callbackGasLimit,
+            numWords
         );
         __realURI = realURI_;
     }
@@ -379,10 +375,10 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
     /*
     * Returns a boolean indicating if the token is currently staked
     */
-    function tokens() public returns(uint256[] memory) {
+    function tokens() public returns (uint256[] memory) {
         uint256[] memory tokens;
         uint256 index = 0;
-        for(uint256 i = 0; i < totalSupply(); ++i) {
+        for (uint256 i = 0; i < totalSupply(); ++i) {
             if (ownerOf(i) == _msgSender() || _stakeOwnerMap[i] == _msgSender()) {
                 tokens[index++] = i;
             }
@@ -440,7 +436,7 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
         uint256 level = stakeLevel(tokenId);
         uint256 offset = seed % totalSupply();
         uint256 metaId = (tokenId + offset) % totalSupply();
-        return string.concat(__realURI, '/meta_', metaId.toString(), '_', level.toString() , '.json');
+        return string.concat(__realURI, '/meta_', metaId.toString(), '_', level.toString(), '.json');
     }
 
     /*

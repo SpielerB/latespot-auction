@@ -13,7 +13,7 @@ import "./@rarible/royalties-upgradeable/contracts/RoyaltiesV2Upgradeable.sol";
 import "./@chainlink/VRFConsumerBaseV2Upgradeable.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 
-/// @title 2 Phase auction and minting for the latespot NFT project
+/// @title Upgradeable 2 Phase auction and minting for the squirreldegens NFT project
 contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, OwnableUpgradeable, RoyaltiesV2Upgradeable, VRFConsumerBaseV2Upgradeable {
     using MathUpgradeable for uint;
     using CountersUpgradeable for CountersUpgradeable.Counter;
@@ -27,8 +27,6 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
         Constants
     */
     uint96 private constant _royaltyPercentageBasisPoints = 1000;
-
-    bytes32 keyHash;
     uint32 constant callbackGasLimit = 100000;
     uint16 constant requestConfirmations = 3;
     uint32 constant numWords = 1;
@@ -36,6 +34,7 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
     /*
         Initialisation
     */
+    bytes32 keyHash;
     address private _vrfCoordinator;
     uint64 private _chainLinkSubscriptionId;
     CountersUpgradeable.Counter private _tokenCounter;
@@ -240,7 +239,6 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
         require(msg.value > 0, "Value has to be greater than 0");
         require(msg.value % publicAuctionPrice == 0, "Value has to be a multiple of the price");
 
-
         uint256 ticketsToBuy = msg.value / publicAuctionPrice;
         uint256 currentTickets = publicAuctionTicketMap[_msgSender()];
 
@@ -327,9 +325,9 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
         VRFCoordinatorV2Interface(_vrfCoordinator).requestRandomWords(
             keyHash,
             _chainLinkSubscriptionId,
-            3,
-            100000,
-            1
+            requestConfirmations,
+            callbackGasLimit,
+            numWords
         );
         __realURI = realURI_;
     }
