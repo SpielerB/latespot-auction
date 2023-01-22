@@ -8,7 +8,6 @@ import fetch from 'node-fetch';
 import fs from 'fs';
 import {Contract, Wallet} from 'ethers';
 import * as dotenv from 'dotenv';
-import contractData from '../artifacts/contracts/AuctionV2Upgradeable.sol/AuctionV2Upgradeable.json'
 
 dotenv.config();
 
@@ -24,6 +23,8 @@ interface DeployContract {
     upgradeAddress?: string;
 }
 
+const ALLOW_UPGRADE = false;
+
 async function main() {
     const owner = new Wallet(process.env.OWNER_PRIVATE_KEY as string, ethers.provider);
     const signerAddress = new Wallet(process.env.SIGNER_PRIVATE_KEY as string, ethers.provider).address;
@@ -31,11 +32,11 @@ async function main() {
     let upgradeAuctionV2 = false;
     let auctionV2UpgradeAddress;
     try {
-        const {address} = await import("./contract/AuctionV2Upgradeable.json");
-        const existingAuctionV2UpgradeableContract = new Contract(address, contractData.abi, owner);
+        const {abi, address} = await import("./contract/AuctionV2Upgradeable.json");
+        const existingAuctionV2UpgradeableContract = new Contract(address, abi, owner);
         // Redeploy if the owners don't match
         if ((await existingAuctionV2UpgradeableContract.owner()) === owner.address) {
-            upgradeAuctionV2 = true;
+            upgradeAuctionV2 = ALLOW_UPGRADE && true;
             auctionV2UpgradeAddress = address;
         }
     } catch (e) {

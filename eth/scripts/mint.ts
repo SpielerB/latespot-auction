@@ -1,8 +1,7 @@
 import 'dotenv/config';
 import {Contract, ContractTransaction, Wallet} from 'ethers';
 import {ethers} from 'hardhat';
-import contractData from '../artifacts/contracts/AuctionV2Upgradeable.sol/AuctionV2Upgradeable.json';
-import {address} from './contract/AuctionV2Upgradeable.json'
+import {abi, address} from './contract/AuctionV2Upgradeable.json'
 
 const waitFor = async (tx: Promise<ContractTransaction>) => {
     return (await tx).wait();
@@ -10,7 +9,7 @@ const waitFor = async (tx: Promise<ContractTransaction>) => {
 
 async function main() {
     const signer = new Wallet(process.env.OWNER_PRIVATE_KEY as string, ethers.provider);
-    const contract = new Contract(address, contractData.abi, signer);
+    const contract = new Contract(address, abi, signer);
 
     const supply = await contract.totalSupply();
     const batchSize = 1000;

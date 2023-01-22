@@ -1,11 +1,11 @@
 import 'dotenv/config';
 import {Contract, Wallet} from 'ethers';
 import {ethers} from 'hardhat';
-import contractData from '../artifacts/contracts/AuctionV2Upgradeable.sol/AuctionV2Upgradeable.json';
+import {abi, address} from './contract/AuctionV2Upgradeable.json'
 
 async function main() {
     const signer = new Wallet(process.env.OWNER_PRIVATE_KEY as string, ethers.provider);
-    const contract = new Contract('0x1458203959F9E990e80c7F9962035846e7CfA725', contractData.abi, signer);
+    const contract = new Contract(address, abi, signer);
 
     await (await contract.withdraw()).wait();
 }

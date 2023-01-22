@@ -1,14 +1,13 @@
 import 'dotenv/config';
 import {BigNumber, Contract, Wallet} from 'ethers';
 import {ethers} from 'hardhat';
-import contractData from '../artifacts/contracts/AuctionV2Upgradeable.sol/AuctionV2Upgradeable.json';
-import {address} from './contract/AuctionV2Upgradeable.json'
+import {abi, address} from './contract/AuctionV2Upgradeable.json'
 import question from '../utils/question';
 import {createSignature} from '../test/helper';
 
 async function main() {
     const signer = new Wallet(process.env.SIGNER_PRIVATE_KEY as string, ethers.provider);
-    const contract = new Contract(address, contractData.abi, signer);
+    const contract = new Contract(address, abi, signer);
     const privateAuction = await contract.privateAuctionActive();
     const publicAuction = await contract.publicAuctionActive();
 

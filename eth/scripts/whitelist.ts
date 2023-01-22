@@ -1,13 +1,12 @@
 import 'dotenv/config';
 import {Contract, Wallet} from 'ethers';
 import {ethers} from 'hardhat';
-import contractData from '../artifacts/contracts/AuctionV2Upgradeable.sol/AuctionV2Upgradeable.json';
-import {address} from './contract/AuctionV2Upgradeable.json'
+import {abi, address} from './contract/AuctionV2Upgradeable.json'
 import question from '../utils/question';
 
 async function main() {
     const signer = new Wallet(process.env.OWNER_PRIVATE_KEY as string, ethers.provider);
-    const contract = new Contract(address, contractData.abi, signer);
+    const contract = new Contract(address, abi, signer);
     const addresses = [];
     let adding = true;
     while (adding) {

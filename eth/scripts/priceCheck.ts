@@ -1,8 +1,7 @@
 import 'dotenv/config';
 import {Contract, Wallet} from 'ethers';
 import {ethers} from 'hardhat';
-import contractData from '../artifacts/contracts/AuctionV2Upgradeable.sol/AuctionV2Upgradeable.json';
-import {address} from './contract/AuctionV2Upgradeable.json'
+import {abi, address} from './contract/AuctionV2Upgradeable.json'
 import crypto from 'crypto';
 import fetch from 'node-fetch';
 import {createSignature, setBalance} from '../test/helper';
@@ -10,7 +9,7 @@ import {createSignature, setBalance} from '../test/helper';
 async function main() {
     const owner = new Wallet(process.env.OWNER_PRIVATE_KEY as string, ethers.provider);
     const signer = new Wallet(process.env.SIGNER_PRIVATE_KEY as string, ethers.provider);
-    const contract = new Contract(address, contractData.abi, owner);
+    const contract = new Contract(address, abi, owner);
 
     const {price: busdPrice} = (await (await fetch('https://api.binance.com/api/v3/avgPrice?symbol=ETHBUSD')).json()) as any
     const {result: {ProposeGasPrice}} = (await (await fetch("https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=CUU9ZE65KAS27K71PQPIAHRTTQG9781B8J")).json());
@@ -27,7 +26,6 @@ async function main() {
         await setBalance(wallet.address, ethers.utils.parseEther("1000"))
         wallets.push(wallet);
     }
-    await contract.whitelist(wallets.map(wallet => wallet.address));
 
     {
         console.info("Checking price for whitelisting 1000 wallets");
