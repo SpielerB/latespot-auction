@@ -5,8 +5,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import * as dotenv from 'dotenv';
-import {abi} from './contract/abi.json';
-import {address} from './contract/AuctionV2.json';
+import {abi, address} from './contract/AuctionV2Upgradeable.json';
 
 dotenv.config();
 

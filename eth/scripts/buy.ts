@@ -1,8 +1,8 @@
 import 'dotenv/config';
 import {BigNumber, Contract, Wallet} from 'ethers';
 import {ethers} from 'hardhat';
-import contractData from '../artifacts/contracts/AuctionV2.sol/AuctionV2.json';
-import {address} from './contract/AuctionV2.json'
+import contractData from '../artifacts/contracts/AuctionV2Upgradeable.sol/AuctionV2Upgradeable.json';
+import {address} from './contract/AuctionV2Upgradeable.json'
 import question from '../utils/question';
 import {createSignature} from '../test/helper';
 

@@ -1,8 +1,8 @@
 import 'dotenv/config';
 import {Contract, Wallet} from 'ethers';
 import {ethers} from 'hardhat';
-import contractData from '../artifacts/contracts/AuctionV2.sol/AuctionV2.json';
-import {address} from './contract/AuctionV2.json'
+import contractData from '../artifacts/contracts/AuctionV2Upgradeable.sol/AuctionV2Upgradeable.json';
+import {address} from './contract/AuctionV2Upgradeable.json'
 import crypto from 'crypto';
 import fetch from 'node-fetch';
 import {createSignature, setBalance} from '../test/helper';

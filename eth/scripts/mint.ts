@@ -1,8 +1,8 @@
 import 'dotenv/config';
 import {Contract, ContractTransaction, Wallet} from 'ethers';
 import {ethers} from 'hardhat';
-import contractData from '../artifacts/contracts/Auction.sol/Auction.json';
-import {address} from './contract/AuctionV2.json'
+import contractData from '../artifacts/contracts/AuctionV2Upgradeable.sol/AuctionV2Upgradeable.json';
+import {address} from './contract/AuctionV2Upgradeable.json'
 
 const waitFor = async (tx: Promise<ContractTransaction>) => {
     return (await tx).wait();

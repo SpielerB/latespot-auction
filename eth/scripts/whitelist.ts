@@ -1,9 +1,8 @@
 import 'dotenv/config';
 import {Contract, Wallet} from 'ethers';
 import {ethers} from 'hardhat';
-import contractData from '../artifacts/contracts/AuctionV2.sol/AuctionV2.json';
-import {address} from './contract/AuctionV2.json'
-import * as readline from 'readline';
+import contractData from '../artifacts/contracts/AuctionV2Upgradeable.sol/AuctionV2Upgradeable.json';
+import {address} from './contract/AuctionV2Upgradeable.json'
 import question from '../utils/question';
 
 async function main() {
@@ -11,7 +10,7 @@ async function main() {
     const contract = new Contract(address, contractData.abi, signer);
     const addresses = [];
     let adding = true;
-    while(adding) {
+    while (adding) {
         console.log("Enter address to whitelist. Enter 'done' after adding all the addresses to whitelist:")
         const answer = await question("> ");
         if (answer.toLowerCase() === "done") {
