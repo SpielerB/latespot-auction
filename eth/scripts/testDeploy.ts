@@ -8,7 +8,7 @@ import fetch from 'node-fetch';
 import fs from 'fs';
 import {Contract, Wallet} from 'ethers';
 import * as dotenv from 'dotenv';
-import contractData from '../artifacts/contracts/AuctionV2Upgradable.sol/AuctionV2Upgradeable.json'
+import contractData from '../artifacts/contracts/AuctionV2Upgradeable.sol/AuctionV2Upgradeable.json'
 
 dotenv.config();
 
