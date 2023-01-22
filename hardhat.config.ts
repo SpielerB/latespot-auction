@@ -1,7 +1,6 @@
 import '@nomiclabs/hardhat-waffle';
 import '@openzeppelin/hardhat-upgrades';
 import {task} from 'hardhat/config';
-import fs from 'fs';
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -11,18 +10,6 @@ task('accounts', 'Prints the list of accounts', async (taskArgs, hre) => {
     for (const account of accounts) {
         console.log(account.address, await account.getBalance())
     }
-});
-
-task('compile', async (taskArgs, hre, runSuper) => {
-    await runSuper();
-    console.log("Copying abi to Server")
-    if (!fs.existsSync('server/src/contract')) {
-        fs.mkdirSync('server/src/contract');
-    }
-    const rawFile = fs.readFileSync('eth/artifacts/contracts/AuctionV2.sol/AuctionV2.json');
-    const {abi} = JSON.parse(rawFile.toString());
-    const jsonString = JSON.stringify({abi}, null, 2);
-    fs.writeFileSync('server/src/contract/abi.json', jsonString);
 });
 
 /**
