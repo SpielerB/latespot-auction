@@ -2,7 +2,7 @@ import {createAction, createAsyncThunk, createReducer} from '@reduxjs/toolkit';
 import {createSelectorHook} from 'react-redux';
 import {RootState} from '../Store';
 import Contract from '../../model/Contract';
-import {BigNumber, Contract as EthersContract} from 'ethers'
+import {BigNumber, Contract as EthersContract, ContractTransaction} from 'ethers'
 import {deepEqual} from 'wagmi';
 import DisplayState from '../../model/DisplayState';
 import {setContractState} from '../application/ApplicationReducer';
@@ -11,6 +11,12 @@ import ContractMetadata from '../../model/ContractMetadata';
 
 
 let syncedContract: EthersContract | undefined | null;
+
+type WatchTransaction =
+    {
+        transaction: Promise<ContractTransaction>,
+        type: "buy"
+    };
 
 export const updateContractModel = createAction<Contract | undefined>("contract/model/update");
 
@@ -46,14 +52,24 @@ export const buyTickets = createAsyncThunk<void, number, { state: RootState }>("
     if (!response.ok) throw `HTTP ${response.status}: ${response.statusText}`;
 
     const signature = await response.text()
+    let transactionPromise;
     if (isPrivateAuctionActive) {
-        await syncedContract.buyPrivateAuction(signature, {value});
+        transactionPromise = syncedContract.buyPrivateAuction(signature, {value});
     } else {
-        await syncedContract.buyPublicAuction(signature, {value});
+        transactionPromise = syncedContract.buyPublicAuction(signature, {value});
     }
+    thunkAPI.dispatch(watchTransaction({transaction: transactionPromise, type: "buy"}))
 })
 
 export const updateContractMetadata = createAction<ContractMetadata>("contract/metadata/update");
+
+export const watchTransaction = createAsyncThunk<void, WatchTransaction, { state: RootState }>("contract/transaction/watch", async ({transaction}, thunkAPI) => {
+    const tx = await transaction;
+    await tx.wait();
+    if (!syncedContract) throw "Contract is not available";
+    const updatedModel = await internalContractSync(syncedContract);
+    thunkAPI.dispatch(updateContractModel(updatedModel));
+});
 
 const internalContractSync = async (contract: EthersContract): Promise<Contract> => {
     // General
@@ -166,43 +182,59 @@ export const updateContractSyncLoop = createAsyncThunk<void, EthersContract | un
 const initialState: ContractState = {
     metadata: {
         started: false
-    }
+    },
+    pendingTransactions: {}
 };
 
 const reducer = createReducer(initialState, builder => {
     builder
         .addCase(updateContractModel, (state, action) => {
             state.contractModel = action.payload;
-            state.transactionError = undefined;
         })
         .addCase(syncContract.fulfilled, (state, action) => {
             state.contractModel = action.payload;
-            state.transactionError = undefined;
         })
-        .addCase(syncContract.rejected, (state, action) => {
+        .addCase(syncContract.rejected, (state) => {
             state.contractModel = undefined;
-            state.transactionError = action.error.message;
-        })
-        .addCase(buyTickets.pending, (state) => {
-            state.pendingTransaction = true;
-            state.transactionError = undefined;
-        })
-        .addCase(buyTickets.fulfilled, (state) => {
-            state.pendingTransaction = false;
-            state.transactionError = undefined;
-        })
-        .addCase(buyTickets.rejected, (state, action) => {
-            state.pendingTransaction = false;
-            state.transactionError = action.error.message;
         })
         .addCase(updateContractMetadata, (state, action) => {
             state.metadata = action.payload;
-            state.transactionError = undefined;
+        })
+        .addCase(watchTransaction.pending, (state, action) => {
+            state.pendingTransactions[getKey(action.meta.arg)] = {
+                pending: true,
+                successful: false,
+                error: false,
+                errorMessage: undefined
+            };
+        })
+        .addCase(watchTransaction.fulfilled, (state, action) => {
+            state.pendingTransactions[getKey(action.meta.arg)] = {
+                pending: false,
+                successful: true,
+                error: false,
+                errorMessage: undefined
+            };
+        })
+        .addCase(watchTransaction.rejected, (state, action) => {
+            state.pendingTransactions[getKey(action.meta.arg)] = {
+                pending: false,
+                successful: false,
+                error: true,
+                errorMessage: action.error.message
+            };
         });
 });
 
+const getKey = (args: WatchTransaction) => {
+    switch (args.type) {
+        case 'buy':
+            return "buy";
+    }
+    return "unknown";
+}
+
 export const useContractModel = () => createSelectorHook()((state: RootState) => state.contract.contractModel);
 export const useContractMetadata = () => createSelectorHook()((state: RootState) => state.contract.metadata);
-export const usePendingTransaction = () => createSelectorHook()((state: RootState) => state.contract.pendingTransaction);
-export const useTransactionError = () => createSelectorHook()((state: RootState) => state.contract.transactionError);
+export const useBuyTransaction = () => createSelectorHook()((state: RootState) => state.contract.pendingTransactions["buy"])
 export default reducer;

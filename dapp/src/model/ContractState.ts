@@ -1,9 +1,11 @@
 import ContractMetadata from './ContractMetadata';
 import Contract from './Contract';
+import Transaction from './Transaction';
 
 export default interface ContractState {
     metadata: ContractMetadata;
     contractModel?: Contract;
-    pendingTransaction?: boolean;
-    transactionError?: string;
+    pendingTransactions: {
+        [key: string]: Transaction | undefined
+    };
 }
