@@ -90,7 +90,7 @@ const MintSalesForm = () => {
                         disabled={!isEligible}
                     >
                         {Array.from(Array(maxTickets).keys()).map((i) =>
-                            <option key={`ticket-${i + 1}`} value={i + 1}>
+                            <option className="option" key={`ticket-${i + 1}`} value={i + 1}>
                                 {i + 1}
                             </option>)}
                     </select>
@@ -98,13 +98,13 @@ const MintSalesForm = () => {
 
                 <div className="mint-buy-info">Phase #1: Max. {maxTicketsPerWallet} tickets per wallet
                 </div>
-                {isEligible && <div className="summary">
+                {isEligible && <>
                     <h3 className="mint-h3">summary:</h3>
                     <div className="mint-buy-summary">
                         {ethereum} $ETH x {amount} {amount > 1 ? "tickets" : "ticket"} =
                         <span className="mint-buy-summary-bold"> {totalPrice} $ETH</span>
                     </div>
-                </div>}
+                </>}
                 <button onClick={() => dispatch(buyTickets(amount))} type="submit" className="mint-button w-button"
                         disabled={!isEligible}>
                     {amount > 1 ? `Buy ${amount} tickets` : "Buy ticket"}

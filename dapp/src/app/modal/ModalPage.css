@@ -25,7 +25,9 @@
     border-radius: 5px;
     border-color: #0cffcf;
     border-style: solid;
-    padding: 16px 16px 16px
+    padding: 16px 16px 16px;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .modal-close {
