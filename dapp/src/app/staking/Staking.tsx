@@ -17,11 +17,6 @@ export const Staking = () => {
             <h2 className="staking-title">MY SQUIRRELS</h2>
             <div className="staking-tokens">
                 {contractModel?.tokens.map(token => <Token key={`token.${token.id}`} token={token}/>)}
-                {contractModel?.tokens.map(token => <Token key={`token.${token.id}`} token={token}/>)}
-                {contractModel?.tokens.map(token => <Token key={`token.${token.id}`} token={token}/>)}
-                {contractModel?.tokens.map(token => <Token key={`token.${token.id}`} token={token}/>)}
-                {contractModel?.tokens.map(token => <Token key={`token.${token.id}`} token={token}/>)}
-                {contractModel?.tokens.map(token => <Token key={`token.${token.id}`} token={token}/>)}
             </div>
             <div className="staking-info">
                 <h2 className="staking-title">IMPORTANT STAKING INFORMATION</h2>

@@ -1,11 +1,11 @@
-import {AnyAction, combineReducers, configureStore, Dispatch, Middleware} from '@reduxjs/toolkit';
+import {combineReducers, configureStore, Middleware} from '@reduxjs/toolkit';
 import thunk from 'redux-thunk';
 import logger from 'redux-logger'
 import {useDispatch} from 'react-redux';
 import ApplicationReducer from './application/ApplicationReducer';
 import ContractReducer from './contract/ContractReducer';
 
-const additionalMiddlewares: Middleware<{}, any, Dispatch<AnyAction>>[] = [thunk];
+const additionalMiddlewares: Middleware[] = [thunk];
 if (import.meta.env.DEV) {
     additionalMiddlewares.push(logger);
 }
