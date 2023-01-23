@@ -214,23 +214,54 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
                     await startPublicAuction({supply: BigNumber.from(5), price: BigNumber.from(1)})
                     await buyPublicAuction(5);
                     await stopPublicAuction();
-
                     await contract.mintAndDistribute(10);
+
+                    await contract.defineStakeLevels([1000000]);
 
                     const baseURI = 'https://test.example.com';
                     await contract.requestReveal(baseURI);
                     const seed = await contract.seed();
                     const totalSupply = await contract.totalSupply();
                     const offset = seed % totalSupply;
-                    for (let i = 0; i < 10; ++i) {
-                        const metaId = (i + offset) % totalSupply;
-                        expect(await contract.tokenURI(i)).to.equal(`${baseURI}/meta_${metaId}_0.json`);
+                    for (let i = 1; i <= 10; ++i) {
+                        const metaId = (i + offset) % totalSupply + 1;
+                        expect(await contract.tokenURI(i)).to.equal(`${baseURI}/${metaId}_0.json`);
                     }
                 });
 
                 it('Should point to the correct level', async () => {
+                    await startPrivateAuction({
+                        supply: BigNumber.from(5),
+                        price: BigNumber.from(1),
+                        ticketsPerWallet: 5
+                    })
+                    await buyPrivateAuction(5);
+                    await stopPrivateAuction();
+                    await startPublicAuction({supply: BigNumber.from(5), price: BigNumber.from(1)})
+                    await buyPublicAuction(5);
+                    await stopPublicAuction();
+                    await contract.mintAndDistribute(10);
+
+                    await contract.defineStakeLevels([10, 20, 30]);
+
                     const baseURI = 'https://test.example.com';
                     await contract.requestReveal(baseURI);
+                    await contract.stake(2);
+                    await contract.stake(3);
+                    await contract.stake(4);
+                    await increaseNextBlockTime(10);
+                    await contract.unStake(2);
+                    await increaseNextBlockTime(10);
+                    await contract.unStake(3);
+                    await increaseNextBlockTime(10);
+                    await contract.unStake(4);
+                    const seed = await contract.seed();
+                    const totalSupply = await contract.totalSupply();
+                    const offset = seed % totalSupply;
+                    expect(await contract.tokenURI(1)).to.equal(`${baseURI}/${(1 + offset) % totalSupply + 1}_0.json`);
+                    expect(await contract.tokenURI(2)).to.equal(`${baseURI}/${(2 + offset) % totalSupply + 1}_1.json`);
+                    expect(await contract.tokenURI(3)).to.equal(`${baseURI}/${(3 + offset) % totalSupply + 1}_2.json`);
+                    expect(await contract.tokenURI(4)).to.equal(`${baseURI}/${(4 + offset) % totalSupply + 1}_3.json`);
                 });
             });
         });
@@ -290,6 +321,14 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
                     const wallet = new ethers.Wallet(privateKey, ethers.provider);
                     wallets.push(wallet);
                 }
+                it('Should not mint if the public auction has not been cleaned up', async () => {
+                    await startPrivateAuction({supply: BigNumber.from(1), price: BigNumber.from(1)});
+                    await buyPrivateAuction(1);
+                    await stopPrivateAuction();
+                    await startPublicAuction({supply: BigNumber.from(1), price: BigNumber.from(1)});
+                    await buyPublicAuction(1);
+                    await expect(contract.mintAndDistribute(1000)).to.be.revertedWith('Public auction has to be cleaned up using the stopPublicAuction() function before minting');
+                });
 
                 it('Should mint the same amount of tokens as the wallet has tickets', async () => {
                     const [owner] = await ethers.getSigners();
@@ -422,6 +461,14 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
 
             context('requestReveal', function () {
                 it('Should request a reveal from ChainLink', async () => {
+                    await startPrivateAuction({supply: BigNumber.from(1), price: BigNumber.from(1)});
+                    await buyPrivateAuction(1);
+                    await stopPrivateAuction();
+                    await startPublicAuction({supply: BigNumber.from(1), price: BigNumber.from(1)});
+                    await buyPublicAuction(1);
+                    await stopPublicAuction();
+                    await contract.mintAndDistribute(1000);
+                    await contract.defineStakeLevels([10000]);
                     await contract.requestReveal('https://test.example.com');
                     expect(await contract.revealed()).to.be.true;
                 });
@@ -535,11 +582,16 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
                     const {price, supply, ticketsPerWallet} = await defaultPublicAuctionParams();
                     await expect(contract.startPublicAuction(price, supply, ticketsPerWallet)).to.be.revertedWith('Public auction must start after private auction');
                 });
-
                 it('Should not start the public auction if the private auction is active', async () => {
                     const {price, supply, ticketsPerWallet} = await defaultPublicAuctionParams();
                     await startPrivateAuction();
                     await expect(contract.startPublicAuction(price, supply, ticketsPerWallet)).to.be.revertedWith('Private auction is still active');
+                });
+                it('Should not start the public auction before the private auction has been cleaned up', async () => {
+                    const {price, supply, ticketsPerWallet} = await defaultPublicAuctionParams();
+                    await startPrivateAuction({supply: BigNumber.from(1), price: BigNumber.from(1)});
+                    await buyPrivateAuction(1);
+                    await expect(contract.startPublicAuction(price, supply, ticketsPerWallet)).to.be.revertedWith('Private auction has to be cleaned up using the stopPrivateAuction() function before starting the public auction');
                 });
                 it('Should start the public auction', async () => {
                     await startPrivateAuction();
