@@ -5,6 +5,7 @@ import WalletButton from './WalletButton';
 import './App.css'
 import {useDisplayState} from '../store/application/ApplicationReducer';
 import DisplayState from "../model/DisplayState";
+import {Staking} from './staking/Staking';
 import {useContractModel} from "../store/contract/ContractReducer";
 import AuctionPage from "./auction/AuctionPage";
 
@@ -43,6 +44,8 @@ const ModalContent = () => {
                 auction={contractModel?.publicAuction}
                 title="We are sold out!"
             />;
+        case DisplayState.STAKING:
+            return <Staking/>;
         default:
             return <h1>Display not implemented</h1>
     }

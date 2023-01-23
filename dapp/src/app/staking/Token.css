@@ -1,0 +1,65 @@
+.token {
+    border: 2px solid white;
+    border-radius: 5px;
+    width: 240px;
+    position: relative;
+    margin: 0 16px 16px 0;
+}
+
+.token.staked {
+    border: 2px solid #0cffcf;
+}
+
+.token.bronze {
+    border: 2px solid #CD7F32;
+    border-radius: 5px;
+    width: 240px;
+    position: relative;
+    margin: 0 16px 16px 0;
+}
+
+.token.silver {
+    border: 2px solid silver;
+    border-radius: 5px;
+    width: 240px;
+    position: relative;
+    margin: 0 16px 16px 0;
+}
+
+.token.gold {
+    border: 2px solid gold;
+}
+
+.token-control {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgb(15, 15, 15);
+}
+
+.token-stake-button {
+    align-self: normal;
+}
+
+.token-error {
+    color: darkred;
+}
+
+@media only screen and (max-width: 750px) {
+    .token {
+        margin: 0 0 16px;
+        width: initial;
+    }
+}
+
+@media only screen and (max-width: 450px) {
+    .token {
+        margin: 0 0 16px;
+        width: initial;
+    }
+}
