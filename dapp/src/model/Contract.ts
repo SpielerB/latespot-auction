@@ -8,5 +8,6 @@ export default interface Contract {
     tokensRevealed: boolean;
     walletTickets: number;
     tokens: Token[];
+    stakingLevels: number[]
     whitelisted: boolean;
 }
