@@ -39,12 +39,26 @@
     color: #0cffcf;;
 }
 
+.mint-buy-c {
+    margin-top: 2.3em;
+}
+
 .mint-amount {
     color: #0cffcf;
     background-color: rgb(15, 15, 15);
+    border: none;
 }
 
+.mint-amount:disabled {
+    color: #4F4F4F;
+}
+
+.mint-button {
+    padding: 0.38em 1.28em;
+    font-size: 1.143em;
+    line-height: 1.5em;
+}
 
 .mint-button:disabled {
-    background-color: gray;
-}
+     background-color: gray;
+ }

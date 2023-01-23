@@ -78,7 +78,7 @@ const MintSalesForm = () => {
     }
 
     return (
-        <div className="mint-buy-c w-form">
+        <div className="mint-buy-c">
             <div className="mint-buy" aria-label="Buy Form">
                 <h3 className="mint-buy-h3">HOW MANY TICKETS DO YOU WANT TO BUY?</h3>
                 <div className="mint-buy-amount-w">
@@ -86,7 +86,8 @@ const MintSalesForm = () => {
                     <select
                         value={amount}
                         onChange={event => setAmount(+event.target.value)}
-                        className="mint-amount w-select"
+                        className="mint-amount"
+                        disabled={!isEligible}
                     >
                         {Array.from(Array(maxTickets).keys()).map((i) =>
                             <option key={`ticket-${i + 1}`} value={i + 1}>
@@ -97,11 +98,13 @@ const MintSalesForm = () => {
 
                 <div className="mint-buy-info">Phase #1: Max. {maxTicketsPerWallet} tickets per wallet
                 </div>
-                <h3 className="mint-h3">summary:</h3>
-                <div className="mint-buy-summary">
-                    {ethereum} $ETH x {amount} {amount > 1 ? "tickets" : "ticket"} =
-                    <span className="mint-buy-summary-bold"> {totalPrice} $ETH</span>
-                </div>
+                {isEligible && <div className="summary">
+                    <h3 className="mint-h3">summary:</h3>
+                    <div className="mint-buy-summary">
+                        {ethereum} $ETH x {amount} {amount > 1 ? "tickets" : "ticket"} =
+                        <span className="mint-buy-summary-bold"> {totalPrice} $ETH</span>
+                    </div>
+                </div>}
                 <button onClick={() => dispatch(buyTickets(amount))} type="submit" className="mint-button w-button"
                         disabled={!isEligible}>
                     {amount > 1 ? `Buy ${amount} tickets` : "Buy ticket"}
