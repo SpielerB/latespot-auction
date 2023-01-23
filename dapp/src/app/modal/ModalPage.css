@@ -30,6 +30,18 @@
     overflow-x: hidden;
 }
 
+@media only screen and (max-width: 600px) {
+    .modal-overlay {
+        padding-right: 0;
+        padding-left: 0;
+    }
+
+    .modal-box {
+        margin: 0;
+        border: 0;
+    }
+}
+
 .modal-close {
     display: flex;
     position: absolute;
