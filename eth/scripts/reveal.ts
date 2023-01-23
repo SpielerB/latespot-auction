@@ -7,7 +7,7 @@ async function main() {
     const signer = new Wallet(process.env.OWNER_PRIVATE_KEY as string, ethers.provider);
     const contract = new Contract(address, abi, signer);
 
-    await contract.requestReveal('https://api.squirrel.trivetia.org/token/');
+    await contract.requestReveal('https://ipfs.squirreldegens.com/ipfs/QmRcdgCmNb7e5uL3r1Ze8FSrNLUHqrEUA8iwTuLpgShJTE');
     console.log('Revealed')
 }
 
