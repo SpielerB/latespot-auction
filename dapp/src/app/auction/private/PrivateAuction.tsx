@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import "./PrivateAuction.css"
+import "../Auction.css"
 import {
     buyTickets, useBuyTransaction,
     useContractModel,
@@ -59,7 +59,7 @@ const MintSalesForm = () => {
 
     const isWhitelisted = contractModel?.whitelisted;
     const maxTicketsPerWallet = contractModel?.privateAuction.ticketLimit ?? 0;
-    const ticketCount = contractModel?.walletTickets ?? 0;
+    const ticketCount = contractModel?.publicAuction.walletTickets ?? 0;
     const maxTickets = maxTicketsPerWallet - ticketCount;
 
     let isEligible;
