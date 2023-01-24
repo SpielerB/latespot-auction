@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import "./PrivateAuction.css"
 import {
-    buyTickets,
+    buyTickets, useBuyTransaction,
     useContractModel,
 } from "../../../store/contract/ContractReducer";
 import {useAppDispatch} from "../../../store/Store";
@@ -45,7 +45,7 @@ const MintHeader = () => {
 const MintSalesForm = () => {
     const dispatch = useAppDispatch();
     const contractModel = useContractModel();
-    // const pendingTransaction = usePendingTransaction();
+    const transaction = useBuyTransaction();
     // const contractError = useTransactionError();
 
     const [amount, setAmount] = useState<number>(1);
@@ -58,7 +58,6 @@ const MintSalesForm = () => {
 
 
     const isWhitelisted = contractModel?.whitelisted;
-    console.log(isWhitelisted, contractModel?.whitelisted)
     const maxTicketsPerWallet = contractModel?.privateAuction.ticketLimit ?? 0;
     const ticketCount = contractModel?.walletTickets ?? 0;
     const maxTickets = maxTicketsPerWallet - ticketCount;
@@ -93,6 +92,7 @@ const MintSalesForm = () => {
                             <option className="option" key={`ticket-${i + 1}`} value={i + 1}>
                                 {i + 1}
                             </option>)}
+                        {maxTickets === 0 && <option value={0}>0</option>}
                     </select>
                 </div>
 
@@ -106,7 +106,7 @@ const MintSalesForm = () => {
                     </div>
                 </>}
                 <button onClick={() => dispatch(buyTickets(amount))} type="submit" className="mint-button w-button"
-                        disabled={!isEligible}>
+                        disabled={!isEligible || transaction?.pending}>
                     {amount > 1 ? `Buy ${amount} tickets` : "Buy ticket"}
                 </button>
             </div>
