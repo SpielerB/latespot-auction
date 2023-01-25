@@ -1,0 +1,27 @@
+.dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background-color: rgba(20, 20, 20, 0.75);
+    padding-right: 1.4em;
+    padding-left: 1.4em;
+    z-index: 1000000;
+    display: flex;
+    justify-content: space-around;
+    align-content: stretch;
+}
+
+.dialog-box {
+    position: relative;
+    flex-grow: 1;
+    margin: 16px;
+    background-color: rgb(15, 15, 15);
+    border-radius: 5px;
+    border-color: #0cffcf;
+    border-style: solid;
+    padding: 16px 16px 16px;
+    overflow-y: auto;
+    overflow-x: hidden;
+}

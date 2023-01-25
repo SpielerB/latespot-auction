@@ -7,6 +7,7 @@ import {
 import {useAppDispatch} from "../../../store/Store";
 import {BigNumber, ethers} from "ethers";
 import {useAddress} from "../../../hooks/WalletHooks";
+import InfoDialog from "../../InfoDialog";
 
 const MintHeader = () => {
     const contractModel = useContractModel();
@@ -49,6 +50,7 @@ const MintSalesForm = () => {
     // const contractError = useTransactionError();
 
     const [amount, setAmount] = useState<number>(1);
+    const [showDialog, setShowDialog] = useState<boolean>(false);
     const price = BigNumber.from(contractModel?.privateAuction.price);
     const ethereum = ethers.utils.formatEther(price);
     const totalPrice = (+ethers.utils.formatEther(price.mul(amount))).toLocaleString('de-CH', {
@@ -75,6 +77,7 @@ const MintSalesForm = () => {
         selectText = "SELECT AMOUNT (1 TICKET = 1 NFT)";
         isEligible = true;
     }
+
 
     return (
         <div className="mint-buy-c">
@@ -105,11 +108,25 @@ const MintSalesForm = () => {
                         <span className="mint-buy-summary-bold"> {totalPrice} $ETH</span>
                     </div>
                 </>}
-                <button onClick={() => dispatch(buyTickets(amount))} type="submit" className="mint-button w-button"
+                <button onClick={() => {
+                    setShowDialog(true);
+                }} type="submit" className="mint-button w-button"
                         disabled={!isEligible || transaction?.pending}>
                     {amount > 1 ? `Buy ${amount} tickets` : "Buy ticket"}
                 </button>
             </div>
+            <InfoDialog
+                title="Information"
+                contentText={["Time Wait Gas Gas"]}
+                confirmLabel="Confirm purchase"
+                open={showDialog}
+                cancelLabel="Cancel purchase"
+                onConfirm={() => {
+                    dispatch(buyTickets(amount))
+                    setShowDialog(false)
+                }}
+                onCancel={() => setShowDialog(false)}
+            />
         </div>);
 }
 const PrivateAuction = () => {
