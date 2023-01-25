@@ -86,7 +86,7 @@ const MintSalesForm = () => {
                         value={amount}
                         onChange={event => setAmount(+event.target.value)}
                         className="mint-amount"
-                        disabled={!isEligible}
+                        disabled={!isEligible || transaction?.pending}
                     >
                         {Array.from(Array(maxTickets).keys()).map((i) =>
                             <option className="option" key={`ticket-${i + 1}`} value={i + 1}>

@@ -59,7 +59,7 @@ const MintSalesForm = () => {
 
     const isWhitelisted = contractModel?.whitelisted;
     const maxTicketsPerWallet = contractModel?.privateAuction.ticketLimit ?? 0;
-    const ticketCount = contractModel?.publicAuction.walletTickets ?? 0;
+    const ticketCount = contractModel?.privateAuction.walletTickets ?? 0;
     const maxTickets = maxTicketsPerWallet - ticketCount;
 
     let isEligible;
@@ -86,7 +86,7 @@ const MintSalesForm = () => {
                         value={amount}
                         onChange={event => setAmount(+event.target.value)}
                         className="mint-amount"
-                        disabled={!isEligible}
+                        disabled={!isEligible || transaction?.pending}
                     >
                         {Array.from(Array(maxTickets).keys()).map((i) =>
                             <option className="option" key={`ticket-${i + 1}`} value={i + 1}>
