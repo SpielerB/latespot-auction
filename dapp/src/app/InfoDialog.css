@@ -5,8 +5,6 @@
     bottom: 0;
     right: 0;
     background-color: rgba(20, 20, 20, 0.75);
-    padding-right: 1.4em;
-    padding-left: 1.4em;
     z-index: 1000000;
     display: flex;
     justify-content: space-around;
@@ -15,13 +13,51 @@
 
 .dialog-box {
     position: relative;
-    flex-grow: 1;
-    margin: 16px;
+    margin: 13em 0;
     background-color: rgb(15, 15, 15);
-    border-radius: 5px;
-    border-color: #0cffcf;
+    border-color: white;
     border-style: solid;
-    padding: 16px 16px 16px;
+    padding-left: 2.6em;
+    padding-right: 2.6em;
+    padding-top: 3.5em;
+    border-width: 1px;
     overflow-y: auto;
     overflow-x: hidden;
+}
+
+.dialog-title {
+    display: flex;
+    align-items: center;
+    padding-bottom: 2.2em;
+}
+
+.dialog-h2 {
+    font-size: 3em;
+    font-weight: 500;
+    padding-bottom: 0.1em;
+    line-height: 1em;
+}
+
+.dialog-icon {
+    margin: auto 1em;
+    width: 2.2em;
+}
+
+
+
+.dialog-text {
+    padding-bottom: 1.3em;
+}
+
+.dialog-button {
+    border: 1px solid #FFFFFF;
+    background-color: transparent;
+    display: table-cell;
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 0.65em 0;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 1.14em;
+    text-transform: uppercase;
 }

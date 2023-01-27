@@ -78,6 +78,13 @@ const MintSalesForm = () => {
         isEligible = true;
     }
 
+    const buttonText = () => {
+        if (transaction?.pending) {
+            return "Pending..."
+        } else {
+            return amount > 1 ? `Buy ${amount} tickets` : "Buy ticket"
+        }
+    }
 
     return (
         <div className="mint-buy-c">
@@ -108,16 +115,15 @@ const MintSalesForm = () => {
                         <span className="mint-buy-summary-bold"> {totalPrice} $ETH</span>
                     </div>
                 </>}
-                <button onClick={() => {
-                    setShowDialog(true);
-                }} type="submit" className="mint-button w-button"
+                <button onClick={() => setShowDialog(true)} type="submit" className="mint-button w-button"
                         disabled={!isEligible || transaction?.pending}>
-                    {amount > 1 ? `Buy ${amount} tickets` : "Buy ticket"}
+                    {buttonText()}
                 </button>
             </div>
             <InfoDialog
-                title="Information"
-                contentText={["Time Wait Gas Gas"]}
+                iconSrc="https://assets.website-files.com/621e34ea4b3095856cff1ff8/6226563ba9df1423307642dd_live-icon.svg"
+                title="Confirmation"
+                contentText={["Time Wait", "Gas Gas"]}
                 confirmLabel="Confirm purchase"
                 open={showDialog}
                 cancelLabel="Cancel purchase"

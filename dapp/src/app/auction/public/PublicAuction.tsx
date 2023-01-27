@@ -7,6 +7,7 @@ import {
 import {useAppDispatch} from "../../../store/Store";
 import {BigNumber, ethers} from "ethers";
 import {useAddress} from "../../../hooks/WalletHooks";
+import InfoDialog from "../../InfoDialog";
 
 const MintHeader = () => {
     const contractModel = useContractModel();
@@ -49,6 +50,7 @@ const MintSalesForm = () => {
     // const contractError = useTransactionError();
 
     const [amount, setAmount] = useState<number>(1);
+    const [showDialog, setShowDialog] = useState<boolean>(false);
     const price = BigNumber.from(contractModel?.publicAuction.price);
     const ethereum = ethers.utils.formatEther(price);
     const totalPrice = (+ethers.utils.formatEther(price.mul(amount))).toLocaleString('de-CH', {
@@ -74,6 +76,14 @@ const MintSalesForm = () => {
     } else {
         selectText = "SELECT AMOUNT (1 TICKET = 1 NFT)";
         isEligible = true;
+    }
+
+    const buttonText = () => {
+        if (transaction?.pending) {
+            return "Pending..."
+        } else {
+            return amount > 1 ? `Buy ${amount} tickets` : "Buy ticket"
+        }
     }
 
     return (
@@ -105,11 +115,24 @@ const MintSalesForm = () => {
                         <span className="mint-buy-summary-bold"> {totalPrice} $ETH</span>
                     </div>
                 </>}
-                <button onClick={() => dispatch(buyTickets(amount))} type="submit" className="mint-button w-button"
+                <button onClick={() => setShowDialog(true)} type="submit" className="mint-button w-button"
                         disabled={!isEligible || transaction?.pending}>
-                    {amount > 1 ? `Buy ${amount} tickets` : "Buy ticket"}
+                    {buttonText()}
                 </button>
             </div>
+            <InfoDialog
+                iconSrc="https://assets.website-files.com/621e34ea4b3095856cff1ff8/6226563ba9df1423307642dd_live-icon.svg"
+                title="Confirmation"
+                contentText={["Time Wait", "Gas Gas"]}
+                confirmLabel="Confirm purchase"
+                open={showDialog}
+                cancelLabel="Cancel purchase"
+                onConfirm={() => {
+                    dispatch(buyTickets(amount))
+                    setShowDialog(false)
+                }}
+                onCancel={() => setShowDialog(false)}
+            />
         </div>);
 }
 const PublicAuction = () => {
