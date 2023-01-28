@@ -1,29 +1,41 @@
 import React, {useState} from 'react';
-import "../Auction.css"
+import "./AuctionPage.css"
 import {
     buyTickets, useBuyTransaction,
     useContractModel,
-} from "../../../store/contract/ContractReducer";
-import {useAppDispatch} from "../../../store/Store";
+} from "../../store/contract/ContractReducer";
+import {useAppDispatch} from "../../store/Store";
 import {BigNumber, ethers} from "ethers";
-import {useAddress} from "../../../hooks/WalletHooks";
-import InfoDialog from "../../InfoDialog";
+import {useAddress} from "../../hooks/WalletHooks";
+import InfoDialog from "../InfoDialog";
+import Auction from "../../model/Auction";
 
-const MintHeader = () => {
+
+interface AuctionProps {
+    phase: number;
+    auction?: Auction;
+    title: String;
+}
+
+interface SalesProps {
+    auction?: Auction;
+}
+
+const MintHeader = (props: AuctionProps) => {
     const contractModel = useContractModel();
+    const ticketsInWallet = contractModel?.walletTickets ?? 0;
 
-    const ticketsSold = contractModel?.privateAuction.ticketsSold ?? 0;
-    const ticketSupply = contractModel?.privateAuction.ticketSupply ?? 0;
+    const ticketsSold = props.auction?.ticketsSold ?? 0;
+    const ticketSupply = props.auction?.ticketSupply ?? 0;
     const soldString = ticketsSold.toLocaleString('de-CH');
     const supplyString = ticketSupply.toLocaleString('de-CH');
-    const ethereum = ethers.utils.formatEther(BigNumber.from(contractModel?.privateAuction.price));
+    const ethereum = ethers.utils.formatEther(BigNumber.from(props.auction?.price));
 
-    const ticketsInWallet = contractModel?.walletTickets ?? 0;
 
     return (
         <div className="mint-header">
-            <h4 className="mint-h4">phase #1</h4>
-            <h1 className="mint-h1">WHITELIST SALE</h1>
+            <h4 className="mint-h4">phase #{props.phase}</h4>
+            <h1 className="mint-h1">{props.title}</h1>
             <div className="mint-mint-p">
                 You currently have {ticketsInWallet} tickets.
             </div>
@@ -43,7 +55,7 @@ const MintHeader = () => {
     );
 }
 
-const MintSalesForm = () => {
+const MintSalesForm = (props: SalesProps) => {
     const dispatch = useAppDispatch();
     const contractModel = useContractModel();
     const transaction = useBuyTransaction();
@@ -51,17 +63,17 @@ const MintSalesForm = () => {
 
     const [amount, setAmount] = useState<number>(1);
     const [showDialog, setShowDialog] = useState<boolean>(false);
-    const price = BigNumber.from(contractModel?.privateAuction.price);
+    const price = BigNumber.from(props.auction?.price);
     const ethereum = ethers.utils.formatEther(price);
     const totalPrice = (+ethers.utils.formatEther(price.mul(amount))).toLocaleString('de-CH', {
         minimumFractionDigits: 3,
         maximumFractionDigits: 3
     });
 
-
     const isWhitelisted = contractModel?.whitelisted;
-    const maxTicketsPerWallet = contractModel?.privateAuction.ticketLimit ?? 0;
-    const ticketCount = contractModel?.privateAuction.walletTickets ?? 0;
+    const hasStopped = props.auction?.hasStopped ?? false;
+    const maxTicketsPerWallet = props.auction?.ticketLimit ?? 0;
+    const ticketCount = props.auction?.walletTickets ?? 0;
     const maxTickets = maxTicketsPerWallet - ticketCount;
 
     let isEligible;
@@ -70,6 +82,9 @@ const MintSalesForm = () => {
     if (!isWhitelisted) {
         selectText = "YOUR WALLET IS NOT WHITELISTED";
         isEligible = false;
+    } else if (hasStopped) {
+        isEligible = false;
+        selectText = "SOLD OUT!";
     } else if (maxTicketsPerWallet === ticketCount) {
         selectText = "MAXIMUM NUMBER OF TICKETS REACHED";
         isEligible = false;
@@ -135,14 +150,14 @@ const MintSalesForm = () => {
             />
         </div>);
 }
-const PrivateAuction = () => {
+const AuctionPage = (props: AuctionProps) => {
     const walletAddress = useAddress();
 
     return (
         <div className="mint-section">
             <div className="mint-c">
-                <MintHeader/>
-                <MintSalesForm/>
+                <MintHeader {...props}/>
+                <MintSalesForm auction={props.auction}/>
             </div>
             <div className="mint-line"/>
 
@@ -158,4 +173,4 @@ const PrivateAuction = () => {
             </div>
         </div>);
 }
-export default PrivateAuction;
+export default AuctionPage;

@@ -4,11 +4,9 @@ import WalletButton from './WalletButton';
 
 import './App.css'
 import {useDisplayState} from '../store/application/ApplicationReducer';
-import PrivateAuction from "./auction/private/PrivateAuction";
-import PrePublicAuction from "./auction/PrePublicAuction";
-import PreMint from "./preStaking/PreMint";
-import PublicAuction from "./auction/public/PublicAuction";
 import DisplayState from "../model/DisplayState";
+import {useContractModel} from "../store/contract/ContractReducer";
+import AuctionPage from "./auction/AuctionPage";
 
 interface AppProps {
     mobileNavElement: Element | DocumentFragment;
@@ -17,16 +15,34 @@ interface AppProps {
 
 const ModalContent = () => {
     const displayState = useDisplayState();
+    const contractModel = useContractModel();
 
+    console.log(displayState.toString());
     switch (displayState) {
         case DisplayState.PRIVATE_AUCTION:
-            return <PrivateAuction/>;
+            return <AuctionPage
+                phase={1}
+                auction={contractModel?.privateAuction}
+                title="Whitelist sale"
+            />;
         case DisplayState.PRE_PUBLIC_AUCTION:
-            return <PrePublicAuction/>;
+            return <AuctionPage
+                phase={1}
+                auction={contractModel?.privateAuction}
+                title="Whitelist sold out!"
+            />;
         case DisplayState.PUBLIC_AUCTION:
-            return <PublicAuction/>;
+            return <AuctionPage
+                phase={2}
+                auction={contractModel?.publicAuction}
+                title="Public sale"
+            />;
         case DisplayState.PRE_MINT:
-            return <PreMint/>;
+            return <AuctionPage
+                phase={2}
+                auction={contractModel?.publicAuction}
+                title="We are sold out!"
+            />;
         default:
             return <h1>Display not implemented</h1>
     }
