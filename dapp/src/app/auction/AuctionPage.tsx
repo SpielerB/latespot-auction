@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import "./AuctionPage.css"
 import {
     buyTickets, useBuyTransaction,
@@ -59,10 +59,10 @@ const MintSalesForm = (props: SalesProps) => {
     const dispatch = useAppDispatch();
     const contractModel = useContractModel();
     const transaction = useBuyTransaction();
-    // const contractError = useTransactionError();
 
     const [amount, setAmount] = useState<number>(1);
-    const [showDialog, setShowDialog] = useState<boolean>(false);
+    const [showInfo, setShowInfo] = useState<boolean>(false);
+    const [showError, setShowError] = useState<boolean>(false);
     const price = BigNumber.from(props.auction?.price);
     const ethereum = ethers.utils.formatEther(price);
     const totalPrice = (+ethers.utils.formatEther(price.mul(amount))).toLocaleString('de-CH', {
@@ -78,7 +78,6 @@ const MintSalesForm = (props: SalesProps) => {
 
     let isEligible;
     let selectText;
-    // 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
     if (!isWhitelisted) {
         selectText = "YOUR WALLET IS NOT WHITELISTED";
         isEligible = false;
@@ -100,6 +99,18 @@ const MintSalesForm = (props: SalesProps) => {
             return amount > 1 ? `Buy ${amount} tickets` : "Buy ticket"
         }
     }
+
+    let errorMessage = transaction?.error && transaction.errorMessage
+        || "An unidentified error occurred, please try again.";
+
+    useEffect(() => {
+        if (transaction?.error) {
+            setShowError(true);
+        } else {
+            setShowError(false);
+        }
+    }, [transaction?.error])
+
 
     return (
         <div className="mint-buy-c">
@@ -130,7 +141,7 @@ const MintSalesForm = (props: SalesProps) => {
                         <span className="mint-buy-summary-bold"> {totalPrice} $ETH</span>
                     </div>
                 </>}
-                <button onClick={() => setShowDialog(true)} type="submit" className="mint-button w-button"
+                <button onClick={() => setShowInfo(true)} type="submit" className="mint-button w-button"
                         disabled={!isEligible || transaction?.pending}>
                     {buttonText()}
                 </button>
@@ -140,13 +151,24 @@ const MintSalesForm = (props: SalesProps) => {
                 title="Confirmation"
                 contentText={["Time Wait", "Gas Gas"]}
                 confirmLabel="Confirm purchase"
-                open={showDialog}
+                open={showInfo}
                 cancelLabel="Cancel purchase"
                 onConfirm={() => {
                     dispatch(buyTickets(amount))
-                    setShowDialog(false)
+                    setShowInfo(false)
                 }}
-                onCancel={() => setShowDialog(false)}
+                onCancel={() => setShowInfo(false)}
+            />
+            <InfoDialog
+                iconSrc="https://assets.website-files.com/621e34ea4b3095856cff1ff8/6226563ba9df1423307642dd_live-icon.svg"
+                title="Error"
+                contentText={[errorMessage]}
+                confirmLabel="Confirm"
+                open={showError}
+                onConfirm={() => {
+                    setShowError(false)
+                }}
+                onCancel={() => setShowError(false)}
             />
         </div>);
 }

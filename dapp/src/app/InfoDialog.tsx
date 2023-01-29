@@ -6,10 +6,10 @@ interface InfoDialogProps {
     title: string;
     contentText: string[];
     confirmLabel: string;
-    cancelLabel: string;
+    cancelLabel?: string;
     open: boolean;
     onConfirm: () => void;
-    onCancel: () => void;
+    onCancel?: () => void;
 
 }
 
@@ -46,8 +46,7 @@ const InfoDialog = (props: InfoDialogProps) => {
                         {t}
                     </div>)}
                 <button className="dialog-button" onClick={props.onConfirm}>{props.confirmLabel}</button>
-                <button className="dialog-button" onClick={props.onCancel}>{props.cancelLabel}</button>
-
+                {props.cancelLabel && <button className="dialog-button" onClick={props.onCancel}>{props.cancelLabel}</button>}
             </div>
 
         </div>);
