@@ -8,7 +8,8 @@ import DisplayState from '../../model/DisplayState';
 import {setContractState} from '../application/ApplicationReducer';
 import ContractState from '../../model/ContractState';
 import ContractMetadata from '../../model/ContractMetadata';
-import Token from '../../model/Token';
+import TokenMetadata from '../../model/TokenMetadata';
+import ContractToken from '../../model/ContractToken';
 
 let syncedContract: EthersContract | undefined | null;
 
@@ -19,7 +20,18 @@ type WatchTransaction =
     } | {
     transaction: Promise<ContractTransaction>,
     type: "stake" | "unstake",
-    token: Token
+    token: ContractToken
+}
+
+const getTransactionKey = (args: WatchTransaction) => {
+    switch (args.type) {
+        case 'stake':
+        case 'unstake':
+            return `token.${args.token.id}`;
+        case 'buy':
+            return "buy";
+    }
+    return "unknown";
 }
 
 export const updateContractModel = createAction<Contract | undefined>("contract/model/update");
@@ -38,7 +50,7 @@ export const syncContract = createAsyncThunk<Contract | undefined, void, { state
     return await internalContractSync(syncedContract, thunkAPI.getState().contract.contractModel);
 })
 
-export const stake = createAsyncThunk<void, Token, { state: RootState }>("contract/token/stake", async (token, thunkAPI) => {
+export const stake = createAsyncThunk<void, ContractToken, { state: RootState }>("contract/token/stake", async (token, thunkAPI) => {
     if (!syncedContract) throw "No contract available. Please try again later.";
     const model = thunkAPI.getState().contract.contractModel;
     if (!model) throw "Local contract model is empty. Please try again later.";
@@ -54,7 +66,7 @@ export const stake = createAsyncThunk<void, Token, { state: RootState }>("contra
 
 });
 
-export const unStake = createAsyncThunk<void, Token, { state: RootState }>("contract/token/unstake", async (token, thunkAPI) => {
+export const unStake = createAsyncThunk<void, ContractToken, { state: RootState }>("contract/token/unstake", async (token, thunkAPI) => {
     if (!syncedContract) throw "No contract available. Please try again later.";
     const model = thunkAPI.getState().contract.contractModel;
     if (!model) throw "Local contract model is empty. Please try again later.";
@@ -108,30 +120,37 @@ export const buyTickets = createAsyncThunk<void, number, { state: RootState }>("
 
 export const updateContractMetadata = createAction<ContractMetadata>("contract/metadata/update");
 
-const internalSyncTokens = async (contract: EthersContract, currentModel?: Contract): Promise<Token[]> => {
-    const ids: number[] = (await contract.tokens()).map((id: BigNumber) => id.toNumber());
-    const existingIds = currentModel?.tokens.map(token => token.id) || [];
-    const newIds = ids.filter(id => existingIds.indexOf(id) === -1);
-    const result: Token[] = currentModel?.tokens.filter(token => ids.indexOf(token.id) !== -1) || [];
-    for (const id of newIds) {
-        const tokenUri: string = await contract.tokenURI(id);
-        const response = await fetch(tokenUri);
-        const metadata = await response.json();
-        result.push({
-            id,
-            ...metadata
-        })
-    }
-    for (let i = 0; i < result.length; ++i) {
-        result[i] = {
-            ...result[i],
-            staked: await contract.staked(result[i].id)
+const syncRawTokens = createAsyncThunk<ContractToken[], void, { state: RootState }>("contract/tokens/sync", async (ignore, thunkAPI) => {
+    if (!syncedContract) throw "No contract connected";
+    const ids: number[] = (await syncedContract.tokens()).map((id: BigNumber) => id.toNumber());
+    const loadedTokens = thunkAPI.getState().contract.rawTokens;
+    const result: ContractToken[] = [];
+    for (const id of ids) {
+        const token: ContractToken = {
+            id: id,
+            level: (await syncedContract.stakeLevel(id)).toNumber(),
+            stakeTime: (await syncedContract.stakeTime(id)).toNumber(),
+            staked: await syncedContract.staked(id),
+            tokenURI: await syncedContract.tokenURI(id),
         };
+        const existingToken = loadedTokens.find(token => token.id === id);
+        const pendingSync = thunkAPI.getState().contract.tokenMetadataSyncPending[id];
+        if (!pendingSync && (!existingToken || existingToken.tokenURI !== token.tokenURI)) {
+            thunkAPI.dispatch(syncTokenMetadata(token));
+        }
+        result.push(token);
     }
     return result;
-}
+});
 
-const internalContractSync = async (contract: EthersContract, currentModel?: Contract): Promise<Contract> => {
+const syncTokenMetadata = createAsyncThunk<TokenMetadata, ContractToken, { state: RootState }>("contract/tokens/metadata/sync", async (rawToken, thunkAPI) => {
+    if (!syncedContract) throw "No contract connected";
+    const response = await fetch(rawToken.tokenURI);
+    const data = await response.json();
+    return data;
+});
+
+const internalContractSync = async (contract: EthersContract): Promise<Contract> => {
 
     // General
     const mintedPromise = contract.minted();
@@ -160,9 +179,6 @@ const internalContractSync = async (contract: EthersContract, currentModel?: Con
     const publicTicketCountPromise = contract.publicAuctionTicketCount();
     const publicTicketSupplyPromise = contract.publicAuctionTicketSupply();
 
-    // Tokens
-    const tokensPromise = internalSyncTokens(contract, currentModel);
-
     return {
         privateAuction: {
             hasStarted: await privateStartedPromise,
@@ -188,7 +204,6 @@ const internalContractSync = async (contract: EthersContract, currentModel?: Con
         tokensRevealed: await revealedPromise,
         walletTickets: (await ticketsPromise).toNumber(),
         whitelisted: await whitelistedPromise,
-        tokens: await tokensPromise,
         stakingLevels: (await stakingLevels).map((level: BigNumber) => level.toNumber())
     };
 }
@@ -249,7 +264,12 @@ const initialState: ContractState = {
     metadata: {
         started: false
     },
-    pendingTransactions: {}
+    rawTokens: [],
+    tokenMetadata: {},
+    pendingTransactions: {},
+    contractSyncPending: false,
+    rawTokensSyncPending: false,
+    tokenMetadataSyncPending: {}
 };
 
 const reducer = createReducer(initialState, builder => {
@@ -265,6 +285,44 @@ const reducer = createReducer(initialState, builder => {
         })
         .addCase(updateContractMetadata, (state, action) => {
             state.metadata = action.payload;
+        })
+        .addCase(syncRawTokens.pending, (state, action) => {
+            state.rawTokensSyncPending = true;
+        })
+        .addCase(syncRawTokens.fulfilled, (state, action) => {
+            state.rawTokens = action.payload;
+            state.rawTokensSyncPending = false;
+        })
+        .addCase(syncRawTokens.rejected, (state, action) => {
+            state.rawTokensSyncPending = false;
+            // TODO: Error handling
+        })
+        .addCase(stake.rejected, (state, action) => {
+            state.pendingTransactions[`token.${action.meta.arg.id}`] = {
+                pending: false,
+                successful: false,
+                error: true,
+                errorMessage: action.error.message || "Unknown error occurred while staking token"
+            };
+        })
+        .addCase(unStake.rejected, (state, action) => {
+            state.pendingTransactions[`token.${action.meta.arg.id}`] = {
+                pending: false,
+                successful: false,
+                error: true,
+                errorMessage: action.error.message || "Unknown error occurred while unstaking token"
+            };
+        })
+        .addCase(syncTokenMetadata.pending, (state, action) => {
+            state.tokenMetadataSyncPending[action.meta.arg.id] = true;
+        })
+        .addCase(syncTokenMetadata.fulfilled, (state, action) => {
+            state.tokenMetadata[action.meta.arg.id] = action.payload;
+            state.tokenMetadataSyncPending[action.meta.arg.id] = false;
+        })
+        .addCase(syncTokenMetadata.rejected, (state, action) => {
+            state.tokenMetadataSyncPending[action.meta.arg.id] = false;
+            // TODO: Error handling
         })
         .addCase(watchTransaction.pending, (state, action) => {
             state.pendingTransactions[getKey(action.meta.arg)] = {
@@ -304,7 +362,21 @@ const getKey = (args: WatchTransaction) => {
 }
 
 export const useContractModel = () => createSelectorHook()((state: RootState) => state.contract.contractModel);
+export const useContractTokens = () => createSelectorHook()((state: RootState) => state.contract.rawTokens);
+export const useTokenMetadata = (idOrToken: number | ContractToken) => createSelectorHook()((state: RootState) => {
+    let id;
+    if (typeof idOrToken === "number") {
+        id = idOrToken;
+    } else {
+        id = idOrToken.id;
+    }
+    return state.contract.tokenMetadata[id]
+});
+
+export const useRawTokensSyncPending = () => createSelectorHook()((state: RootState) => state.contract.rawTokensSyncPending);
+export const useTokenMetadataSyncPending = (token: ContractToken) => createSelectorHook()((state: RootState) => state.contract.tokenMetadataSyncPending[token.id]);
+export const useContractSyncPending = () => createSelectorHook()((state: RootState) => state.contract.contractSyncPending);
 export const useContractMetadata = () => createSelectorHook()((state: RootState) => state.contract.metadata);
 export const useBuyTransaction = () => createSelectorHook()((state: RootState) => state.contract.pendingTransactions["buy"])
-export const useTokenTransaction = (token: Token) => createSelectorHook()((state: RootState) => state.contract.pendingTransactions[`token.${token.id}`])
+export const useTokenTransaction = (token: ContractToken) => createSelectorHook()((state: RootState) => state.contract.pendingTransactions[`token.${token.id}`])
 export default reducer;
