@@ -96,6 +96,7 @@ export const stake = createAsyncThunk<void, ContractToken, { state: RootState }>
     if (!model) throw "Local contract model is empty. Please try again later.";
 
     if (token.staked) throw "Token has already been staked";
+    if (token.level === 3) throw "Token is already at max level"
     if (thunkAPI.getState().application.displayState !== DisplayState.STAKING) throw "Staking is not active";
 
     thunkAPI.dispatch(watchTransaction({
