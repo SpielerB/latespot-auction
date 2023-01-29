@@ -28,17 +28,19 @@ const ModalPage = ({children}: React.PropsWithChildren) => {
         }
     }, [open, keyUpListener]);
 
-    if (!open) return null;
     return (
         <div
-            style={{display: open ? '' : 'none'}}
+            style={{display: open ? undefined : 'none'}}
             onClick={close}
             className="modal-overlay"
         >
-            <div onClick={event => {
-                event.stopPropagation();
-                event.preventDefault();
-            }} className="modal-box">
+            <div
+                onClick={event => {
+                    event.stopPropagation();
+                    event.preventDefault();
+                }}
+                className="modal-box"
+            >
                 <div className="modal-close" onClick={close}>&#10006;</div>
                 {children}
             </div>
