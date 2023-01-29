@@ -1,12 +1,34 @@
-import {useContractModel} from '../../store/contract/ContractReducer';
+import {useContractModel, useContractTokens, useRawTokensSyncPending} from '../../store/contract/ContractReducer';
 import './Staking.css'
 import {Token} from './Token';
-import React from 'react';
+import React, {useCallback} from 'react';
 import {useAddress} from '../../hooks/WalletHooks';
 
 export const Staking = () => {
+    const tokens = useContractTokens();
     const contractModel = useContractModel();
+    const tokensPending = useRawTokensSyncPending();
     const walletAddress = useAddress();
+    const showTokensLoading = !tokens && tokensPending;
+
+    const renderTokensInfo = useCallback(() => {
+        if (tokens) {
+            if (contractModel?.tokensRevealed) {
+                if (tokens.length === 0) {
+                    return <div>There are no squirrels in your wallet. Go and get one to start staking.</div>
+                }
+            } else {
+                return (
+                    <>
+                        <div>The squirrel degens NFTs have not been revealed.</div>
+                        <div>Once the reveal is over, your NFTs will be stakable via the staking terminal</div>
+                    </>
+                )
+            }
+        } else {
+            return <div>Loading tokens...</div>;
+        }
+    }, [tokens, tokensPending, contractModel]);
 
     return (
         <div className={"staking"}>
@@ -15,8 +37,14 @@ export const Staking = () => {
                 <div className="mint-wallet-p"><h3 className="mint-h3">CONNECTED WALLET: </h3>{walletAddress}</div>
             </div>
             <h2 className="staking-title">MY SQUIRRELS</h2>
+            <p>
+                <h3 className="staking-tokens-info">
+                    {renderTokensInfo()}
+                </h3>
+            </p>
             <div className="staking-tokens">
-                {contractModel?.tokens.map(token => <Token key={`token.${token.id}`} token={token}/>)}
+                {!showTokensLoading && tokens.map(token => <Token key={`token.${token.id}`} token={token}/>)}
+                {showTokensLoading && <div>Loading tokens...</div>}
             </div>
             <div className="staking-info">
                 <h2 className="staking-title">IMPORTANT STAKING INFORMATION</h2>
