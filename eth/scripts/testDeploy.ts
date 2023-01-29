@@ -52,6 +52,16 @@ async function main() {
             params: () => []
         },
         {
+            name: "MockLinkToken",
+            proxy: false,
+            params: () => []
+        },
+        {
+            name: "MockVRFWrapper",
+            proxy: false,
+            params: ({MockChainLink}) => [MockChainLink.address]
+        },
+        {
             name: 'AuctionV2',
             proxy: false,
             params: ({MockChainLink}) => [
@@ -81,7 +91,6 @@ async function main() {
             upgrade: upgradeAuctionV2,
             upgradeAddress: auctionV2UpgradeAddress
         },
-        {name: 'Greeter', proxy: false, params: () => ['Hello World from hardhat!']},
     ];
 
     console.log(`Deploying contracts on network '${network.name}'`)
