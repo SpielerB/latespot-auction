@@ -206,7 +206,9 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
         require(!publicAuctionActive(), "Public auction has already been started");
         require(privateAuctionStarted, "Public auction must start after private auction");
         require(!privateAuctionActive(), "Private auction is still active");
+        require(privateAuctionStopped, "Private auction has to be cleaned up using the stopPrivateAuction() function before starting the public auction");
         require(ticketsPerWallet_ > 0, "Requires at least 1 ticket per wallet");
+
         publicAuctionStarted = true;
         publicAuctionPrice = price_;
         publicAuctionTicketSupply = supply_;
@@ -278,6 +280,8 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
     * Mint n tokens
     */
     function mintAndDistribute(uint256 count_) public onlyOwner {
+        require(publicAuctionStopped, "Public auction has to be cleaned up using the stopPublicAuction() function before minting");
+
         uint256 localIndex = _tokenCounter.current();
         uint256 localHolderIndex = _holderIndex;
         uint256 localNextHolderTokenIndex = _nextHolderTokenIndex;
@@ -436,7 +440,7 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
         uint256 level = stakeLevel(tokenId);
         uint256 offset = seed % totalSupply();
         uint256 metaId = (tokenId + offset) % totalSupply();
-        return string.concat(__realURI, '/meta_', metaId.toString(), '_', level.toString(), '.json');
+        return string.concat(__realURI, '/', metaId.toString(), '_', level.toString(), '.json');
     }
 
     /*
