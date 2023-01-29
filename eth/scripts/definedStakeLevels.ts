@@ -7,9 +7,9 @@ async function main() {
     const signer = new Wallet(process.env.OWNER_PRIVATE_KEY as string, ethers.provider);
     const contract = new Contract(address, abi, signer);
     // price, supply, ticketsPerWallet
-    const bronzeLevelSeconds = 60 * 60 * 24 * 30; // 30 Days
-    const silverLevelSeconds = 60 * 60 * 24 * 60; // 60 Days
-    const goldLevelSeconds = 60 * 60 * 24 * 180; // 180 Days
+    const bronzeLevelSeconds = 30; // 30 seconds
+    const silverLevelSeconds = 60 * 2; // 2 Minutes
+    const goldLevelSeconds = 60 * 4; // 4 Minutes
     await contract.defineStakeLevels([bronzeLevelSeconds, silverLevelSeconds, goldLevelSeconds]);
     console.log("Stake levels have been defined")
 }
