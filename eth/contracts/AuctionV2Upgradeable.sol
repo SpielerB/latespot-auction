@@ -6,15 +6,13 @@ import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721RoyaltyUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "./@rarible/royalties-upgradeable/contracts/RoyaltiesV2Upgradeable.sol";
-import "./@chainlink/VRFConsumerBaseV2Upgradeable.sol";
-import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
+import "./@chainlink/VRFV2WrapperConsumerBaseUpgradeable.sol";
 
 /// @title Upgradeable 2 Phase auction and minting for the squirreldegens NFT project
-contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, OwnableUpgradeable, RoyaltiesV2Upgradeable, VRFConsumerBaseV2Upgradeable {
+contract AuctionV2Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2WrapperConsumerBaseUpgradeable {
     using MathUpgradeable for uint;
     using CountersUpgradeable for CountersUpgradeable.Counter;
 
@@ -26,7 +24,6 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
     /*
         Constants
     */
-    uint96 private constant _royaltyPercentageBasisPoints = 1000;
     uint32 constant callbackGasLimit = 100000;
     uint16 constant requestConfirmations = 3;
     uint32 constant numWords = 1;
@@ -34,9 +31,6 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
     /*
         Initialisation
     */
-    bytes32 keyHash;
-    address private _vrfCoordinator;
-    uint64 private _chainLinkSubscriptionId;
     CountersUpgradeable.Counter private _tokenCounter;
     uint256 public preMintCount;
 
@@ -87,23 +81,19 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
     /*
         Reveal
     */
+
+    uint256 public revealVrfRequestId;
     bool public revealed;
     uint256 public seed;
 
-    function initialize(string memory tokenName_, string memory tokenSymbol_, address signatureAddress_, string memory baseURI_, string memory contractURI_, address vrfCoordinator_, uint64 chainLinkSubscriptionId_, bytes32 keyHash_) public initializer {
+    function initialize(string memory tokenName_, string memory tokenSymbol_, address signatureAddress_, string memory baseURI_, string memory contractURI_, address vrfLink_, address vrfWrapper_) public initializer {
         __ERC721_init(tokenName_, tokenSymbol_);
-        __ERC721Royalty_init();
         __Ownable_init();
-        __VRFConsumerBaseV2_init(vrfCoordinator_);
+        __VRFV2WrapperConsumerBase_init(vrfLink_, vrfWrapper_);
 
         signatureAddress = signatureAddress_;
         __baseURI = baseURI_;
         _contractURI = contractURI_;
-        _vrfCoordinator = vrfCoordinator_;
-        _chainLinkSubscriptionId = chainLinkSubscriptionId_;
-        keyHash = keyHash_;
-
-        _setDefaultRoyalty(owner(), _royaltyPercentageBasisPoints);
     }
 
     /*
@@ -130,11 +120,16 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
             delete _whitelistMap[addresses[i]];
         }
     }
-
+    /*
+    * Returns a boolean indicating whether the sender wallet is whitelisted
+    */
     function whitelisted() public view returns (bool) {
         return _whitelistMap[_msgSender()];
     }
 
+    /*
+    * Returns the amount of tickets bought by the sender wallet in the all auctions
+    */
     function tickets() public view returns (uint256) {
         return privateAuctionTicketMap[_msgSender()] + publicAuctionTicketMap[_msgSender()];
     }
@@ -191,6 +186,9 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
         }
     }
 
+    /*
+    * Returns the amount of tickets bought by the sender wallet in the private auction
+    */
     function privateAuctionTickets() public view returns (uint256) {
         return privateAuctionTicketMap[_msgSender()];
     }
@@ -213,6 +211,7 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
         require(!privateAuctionActive(), "Private auction is still active");
         require(privateAuctionStopped, "Private auction has to be cleaned up using the stopPrivateAuction() function before starting the public auction");
         require(ticketsPerWallet_ > 0, "Requires at least 1 ticket per wallet");
+
         publicAuctionStarted = true;
         publicAuctionPrice = price_;
         publicAuctionTicketSupply = supply_;
@@ -255,6 +254,9 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
         }
     }
 
+    /*
+    * Returns the amount of tickets bought by the sender wallet in the public auction
+    */
     function publicAuctionTickets() public view returns (uint256) {
         return publicAuctionTicketMap[_msgSender()];
     }
@@ -265,7 +267,7 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
     function stopPublicAuction() public onlyOwner {
         require(publicAuctionStarted, "Public auction has not been started");
         publicAuctionStopped = true;
-        privateAuctionTicketSupply = privateAuctionTicketCount;
+        publicAuctionTicketSupply = publicAuctionTicketCount;
     }
 
     /*
@@ -273,6 +275,7 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
     * Can be used to activate the collection on a marketplace, like OpenSeas.
     */
     function preMint(uint256 count) public onlyOwner {
+        require(!minted(), "Mint is already over");
         for (uint256 i = 0; i < count; ++i) {
             _safeMint(owner(), _tokenCounter.current() + 1);
             _tokenCounter.increment();
@@ -281,10 +284,11 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
     }
 
     /*
-    * Mint n tokens
+    * Mint n tokens. This can only handle about 1000 tokens, more would use too much gas
     */
     function mintAndDistribute(uint256 count_) public onlyOwner {
         require(publicAuctionStopped, "Public auction has to be cleaned up using the stopPublicAuction() function before minting");
+
         uint256 localIndex = _tokenCounter.current();
         uint256 localHolderIndex = _holderIndex;
         uint256 localNextHolderTokenIndex = _nextHolderTokenIndex;
@@ -328,35 +332,42 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
     function requestReveal(string memory realURI_) public onlyOwner {
         require(_tokenCounter.current() == totalSupply(), "All tokens must be minted before revealing them");
         require(_definedStakeLevels.length > 0, "Tokens may not be revealed until staking levels are defined");
-        VRFCoordinatorV2Interface(_vrfCoordinator).requestRandomWords(
-            keyHash,
-            _chainLinkSubscriptionId,
-            requestConfirmations,
-            callbackGasLimit,
-            numWords
-        );
-        __realURI = realURI_;
-    }
 
-    function fulfillRandomWords(uint256, uint256[] memory randomWords) internal override {
-        reveal(randomWords[0]);
+        __realURI = realURI_;
+        revealVrfRequestId = requestRandomness(callbackGasLimit, requestConfirmations, numWords);
     }
 
     /*
-    * Reveals the real metadata of the token
+    * Will be called by ChainLink with an array containing 1 random word (our seed)
     */
-    function reveal(uint256 seed_) private {
-        seed = seed_;
+    function fulfillRandomWords(uint256, uint256[] memory randomWords) internal override {
+        seed = randomWords[0];
         revealed = true;
     }
 
     /*
-    * Withdraw all the ETH stored inside the contract
+    * Withdraw all the ETH stored inside the contract to the owner wallet
     */
     function withdraw() public onlyOwner {
+        require(minted(), "Tokens have not been minted yet.");
+        require(revealed, "Tokens have not been revealed");
+
         uint256 balance = address(this).balance;
         require(balance > 0, "The contract contains no ETH to withdraw");
         payable(_msgSender()).transfer(address(this).balance);
+    }
+
+    /*
+    * Transfer the LINK of this contract to the owner wallet
+    */
+    function withdrawLink() public onlyOwner {
+        require(minted(), "Tokens have not been minted yet.");
+        require(revealed, "Tokens have not been revealed");
+
+        LinkTokenInterface link = LinkTokenInterface(LINK);
+        uint256 balance = link.balanceOf(address(this));
+        require(balance > 0, "The contract contains no LINK to withdraw");
+        require(link.transfer(msg.sender, balance), "Unable to withdraw LINK");
     }
 
     /*
@@ -364,6 +375,7 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
     * The token will be transferred to the contract until un-staked
     */
     function stake(uint256 tokenId_) public {
+        require(minted(), "Tokens have not been minted");
         require(revealed, "Tokens have not been revealed");
         require(_stakeStartTimeMap[tokenId_] == 0, "Token has already been staked");
         require(_stakeLevelTimeMap[tokenId_] == 0, "Token has already been staked beyond level 0");
@@ -419,6 +431,9 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
         _transfer(address(this), _msgSender(), tokenId_);
     }
 
+    /*
+    * Returns how long the given token has been staked for
+    */
     function stakeTime(uint256 token) public view returns (uint256) {
         uint256 stakeLevelTime = _stakeLevelTimeMap[token];
         if (stakeLevelTime == 0 && _stakeStartTimeMap[token] > 0) {
@@ -446,6 +461,9 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
         return level;
     }
 
+    /*
+    * Returns the URI pointing to the given tokens metadata. The value may change depending on the reveal state and the level of the given token.
+    */
     function tokenURI(uint256 tokenId) public view override(ERC721Upgradeable) returns (string memory){
         if (!revealed) return __baseURI;
         uint256 level = stakeLevel(tokenId);
@@ -458,34 +476,22 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, ERC721RoyaltyUpgradeable, Ow
     * Defines the stake level for a given duration
     */
     function defineStakeLevels(uint256[] memory levelTimes) public onlyOwner {
+        require(!revealed, "Stake levels may not be changed after revealing the metadata");
         _definedStakeLevels = levelTimes;
     }
 
+    /*
+    * Returns the defined stake levels
+    */
     function stakeLevels() public view returns (uint256[] memory) {
         return _definedStakeLevels;
     }
 
-    function getRaribleV2Royalties(uint256) external view returns (LibPart.Part[] memory) {
-        LibPart.Part[] memory royalties = new LibPart.Part[](1);
-        royalties[0].value = _royaltyPercentageBasisPoints;
-        royalties[0].account = payable(owner());
-        return royalties;
-    }
-
-
     /*
-       compatibility functions
+       Compatibility functions
     */
-    function _burn(uint256) internal pure override(ERC721Upgradeable, ERC721RoyaltyUpgradeable) {
+    function _burn(uint256) internal pure override(ERC721Upgradeable) {
         revert("Burning is not allowed");
-    }
-
-    /**
-     * @dev See {IERC165-supportsInterface}.
-     */
-    function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721Upgradeable, ERC721RoyaltyUpgradeable, ERC165Upgradeable) returns (bool) {
-        if (interfaceId == LibRoyaltiesV2._INTERFACE_ID_ROYALTIES) return true;
-        return super.supportsInterface(interfaceId);
     }
 
 }
