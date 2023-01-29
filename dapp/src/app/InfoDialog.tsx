@@ -1,10 +1,9 @@
-import React from 'react';
+import React, {PropsWithChildren} from 'react';
 import "./InfoDialog.css"
 
 interface InfoDialogProps {
     iconSrc: string;
     title: string;
-    contentText: string[];
     confirmLabel: string;
     cancelLabel?: string;
     open: boolean;
@@ -13,9 +12,10 @@ interface InfoDialogProps {
 
 }
 
-const InfoDialog = (props: InfoDialogProps) => {
+const InfoDialog = (props: PropsWithChildren<InfoDialogProps>) => {
 
     if (!props.open) return null;
+
     return (
         <div
             className="dialog-overlay"
@@ -40,13 +40,14 @@ const InfoDialog = (props: InfoDialogProps) => {
                         className="dialog-icon"
                     />
                 </div>
-
-                {props.contentText.map((t, i) =>
-                    <div className="dialog-text" key={`text-${i}`}>
-                        {t}
-                    </div>)}
-                <button className="dialog-button" onClick={props.onConfirm}>{props.confirmLabel}</button>
-                {props.cancelLabel && <button className="dialog-button" onClick={props.onCancel}>{props.cancelLabel}</button>}
+                <div className="dialog-text">
+                    {props.children}
+                </div>
+                <div className="dialog-buttons">
+                    <button className="dialog-button" onClick={props.onConfirm}>{props.confirmLabel}</button>
+                    {props.cancelLabel &&
+                        <button className="dialog-button" onClick={props.onCancel}>{props.cancelLabel}</button>}
+                </div>
             </div>
 
         </div>);

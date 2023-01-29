@@ -1,9 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import "./AuctionPage.css"
-import {
-    buyTickets, useBuyTransaction,
-    useContractModel,
-} from "../../store/contract/ContractReducer";
+import {buyTickets, useBuyTransaction, useContractModel,} from "../../store/contract/ContractReducer";
 import {useAppDispatch} from "../../store/Store";
 import {BigNumber, ethers} from "ethers";
 import {useAddress} from "../../hooks/WalletHooks";
@@ -154,7 +151,6 @@ const MintSalesForm = (props: SalesProps) => {
             <InfoDialog
                 iconSrc="https://assets.website-files.com/621e34ea4b3095856cff1ff8/6226563ba9df1423307642dd_live-icon.svg"
                 title="Confirmation"
-                contentText={["Time Wait", "Gas Gas"]}
                 confirmLabel="Confirm purchase"
                 open={showInfo}
                 cancelLabel="Cancel purchase"
@@ -163,18 +159,20 @@ const MintSalesForm = (props: SalesProps) => {
                     setShowInfo(false)
                 }}
                 onCancel={() => setShowInfo(false)}
-            />
+            >
+                <div>Time Wait</div>
+                <div>Gas Gas</div>
+            </InfoDialog>
             <InfoDialog
                 iconSrc="https://assets.website-files.com/621e34ea4b3095856cff1ff8/6226563ba9df1423307642dd_live-icon.svg"
                 title="Error"
-                contentText={[errorMessage]}
                 confirmLabel="Confirm"
                 open={showError}
                 onConfirm={() => {
                     setShowError(false)
                 }}
                 onCancel={() => setShowError(false)}
-            />
+            >{errorMessage}</InfoDialog>
         </div>);
 }
 const AuctionPage = (props: AuctionProps) => {
