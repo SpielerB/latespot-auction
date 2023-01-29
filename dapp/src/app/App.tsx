@@ -18,7 +18,6 @@ const ModalContent = () => {
     const displayState = useDisplayState();
     const contractModel = useContractModel();
 
-    console.log(displayState.toString());
     switch (displayState) {
         case DisplayState.PRIVATE_AUCTION:
             return <AuctionPage
@@ -44,6 +43,7 @@ const ModalContent = () => {
                 auction={contractModel?.publicAuction}
                 title="We are sold out!"
             />;
+        case DisplayState.PRE_REVEAL:
         case DisplayState.STAKING:
             return <Staking/>;
         default:
