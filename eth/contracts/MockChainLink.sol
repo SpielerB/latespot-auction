@@ -1,8 +1,8 @@
-pragma solidity ^0.8.0;
-
+pragma solidity ^0.8.9;
 
 import "@chainlink/contracts/src/v0.8/interfaces/VRFCoordinatorV2Interface.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBaseV2.sol";
+import "./@chainlink/VRFConsumerBaseInterface.sol";
 
 contract MockChainLink is VRFCoordinatorV2Interface {
 
@@ -33,8 +33,8 @@ contract MockChainLink is VRFCoordinatorV2Interface {
         uint32 callbackGasLimit,
         uint32 numWords
     ) external returns (uint256 requestId) {
-        VRFConsumerBaseV2 caller = VRFConsumerBaseV2(msg.sender);
-        caller.rawFulfillRandomWords(requestId, randomWords);
+        VRFConsumerBaseInterface caller = VRFConsumerBaseInterface(msg.sender);
+        caller.rawFulfillRandomWords(42, randomWords);
         return 42;
     }
 
