@@ -70,7 +70,7 @@ const MintSalesForm = (props: SalesProps) => {
         maximumFractionDigits: 3
     });
 
-    const isWhitelisted = contractModel?.whitelisted;
+    const isWhitelisted = contractModel?.whitelisted || contractModel?.publicAuction.hasStarted;
     const hasStopped = props.auction?.hasStopped ?? false;
     const maxTicketsPerWallet = props.auction?.ticketLimit ?? 0;
     const ticketCount = props.auction?.walletTickets ?? 0;
@@ -111,6 +111,11 @@ const MintSalesForm = (props: SalesProps) => {
         }
     }, [transaction?.error])
 
+    useEffect(() => {
+        if(maxTickets < amount){
+            setAmount(maxTickets);
+        }
+    }, [maxTickets])
 
     return (
         <div className="mint-buy-c">
