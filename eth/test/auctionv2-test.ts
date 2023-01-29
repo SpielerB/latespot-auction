@@ -13,6 +13,8 @@ interface InitParams {
     baseURI: string;
     contractURI: string;
     vrfCoordinator: string;
+    vrfWrapper: string;
+    linkToken: string;
     chainLinkSubscriptionId: number;
     chainLinkKeyHash: string;
 }
@@ -29,6 +31,12 @@ interface PublicAuctionParams {
     ticketsPerWallet: number;
 }
 
+interface ChainLinkContracts {
+    vrfCoordinator: Contract,
+    vrfWrapper: Contract,
+    linkToken: Contract
+}
+
 const defaultInitParams = async (): Promise<InitParams> => {
     const signers = await ethers.getSigners();
     return {
@@ -38,6 +46,8 @@ const defaultInitParams = async (): Promise<InitParams> => {
         baseURI: 'https://example.com/token/0',
         contractURI: 'https://example.com/contract',
         vrfCoordinator: '0x6168499c0cFfCaCD319c818142124B7A15E857ab',
+        vrfWrapper: '0x6168499c0cFfCaCD319c818142124B7A15E857ab',
+        linkToken: '0x6168499c0cFfCaCD319c818142124B7A15E857ab',
         chainLinkSubscriptionId: 42,
         chainLinkKeyHash: "0xd89b2bf150e3b9e13446986e571fb9cab24b13cea0a43ea20a6049a85cc807cc"
     };
@@ -59,8 +69,13 @@ const defaultPublicAuctionParams = async (): Promise<PrivateAuctionParams> => {
     }
 }
 
-const deployChainLink = async () => {
-    return await deploy('MockChainLink');
+const deployChainLink = async (): Promise<ChainLinkContracts> => {
+    const vrfCoordinator = await deploy('MockChainLink');
+    return {
+        linkToken: await deploy('MockLinkToken'),
+        vrfCoordinator,
+        vrfWrapper: await deploy('MockVRFWrapper', vrfCoordinator.address)
+    };
 };
 
 const deployAuction = async (overrides?: Partial<InitParams>) => {
@@ -84,9 +99,8 @@ const deployAuctionProxy = async (overrides?: Partial<InitParams>) => {
         overrides?.signer || defaultParams.signer,
         overrides?.baseURI || defaultParams.baseURI,
         overrides?.contractURI || defaultParams.contractURI,
-        overrides?.vrfCoordinator || defaultParams.vrfCoordinator,
-        overrides?.chainLinkSubscriptionId || defaultParams.chainLinkSubscriptionId,
-        overrides?.chainLinkKeyHash || defaultParams.chainLinkKeyHash);
+        overrides?.linkToken || defaultParams.linkToken,
+        overrides?.vrfWrapper || defaultParams.vrfWrapper);
 };
 
 const contractTests = (name: string, deployAuction: (overrides?: Partial<InitParams>) => Promise<Contract>) => {
@@ -97,7 +111,7 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
         }
 
         let contract: Contract;
-        let chainLinkContract: Contract;
+        let chainLinkContracts: ChainLinkContracts;
         const getWhitelistedSigners = async () => (await ethers.getSigners()).filter((_, i) => i % 2 === 0);
 
         const startPrivateAuction = async (params?: Partial<PrivateAuctionParams>) => {
@@ -160,8 +174,12 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
 
 
         beforeEach(async () => {
-            chainLinkContract = await deployChainLink();
-            contract = await deployAuction({vrfCoordinator: chainLinkContract.address}); // Redeploy contract for each test to ensure clean state
+            chainLinkContracts = await deployChainLink();
+            contract = await deployAuction({
+                vrfCoordinator: chainLinkContracts.vrfCoordinator.address,
+                linkToken: chainLinkContracts.linkToken.address,
+                vrfWrapper: chainLinkContracts.vrfWrapper.address
+            }); // Redeploy contract for each test to ensure clean state
             const tx: ContractTransaction = await contract.whitelist((await getWhitelistedSigners()).map(s => s.address));
             await tx.wait();
         })
@@ -282,6 +300,14 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
 
                 it('Should allow for the owner to withdraw the balance of the contract', async () => {
                     const [owner] = await ethers.getSigners();
+
+                    await startPrivateAuction();
+                    await stopPrivateAuction();
+                    await startPublicAuction();
+                    await stopPublicAuction();
+                    await contract.defineStakeLevels([1234]);
+                    await contract.requestReveal("Test");
+
                     const ownerStartBalance = await owner.getBalance();
                     const contractStartBalance = ethers.utils.parseEther('150');
                     await setBalance(contract.address, contractStartBalance);
@@ -719,8 +745,12 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
             const levels = [3600, 7200, 10800, 14400, 18000];
 
             beforeEach(async () => {
-                chainLinkContract = await deployChainLink();
-                contract = await deployAuction({vrfCoordinator: chainLinkContract.address}); // Redeploy contract for each test to ensure clean state
+                chainLinkContracts = await deployChainLink();
+                contract = await deployAuction({
+                    vrfCoordinator: chainLinkContracts.vrfCoordinator.address,
+                    vrfWrapper: chainLinkContracts.vrfWrapper.address,
+                    linkToken: chainLinkContracts.linkToken.address,
+                }); // Redeploy contract for each test to ensure clean state
                 const tx: ContractTransaction = await contract.whitelist((await getWhitelistedSigners()).map(s => s.address));
                 await tx.wait();
 
