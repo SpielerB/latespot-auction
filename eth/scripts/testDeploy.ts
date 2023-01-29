@@ -8,6 +8,7 @@ import fetch from 'node-fetch';
 import fs from 'fs';
 import {Contract, Wallet} from 'ethers';
 import * as dotenv from 'dotenv';
+import {setBalance} from '../test/helper';
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ const ALLOW_UPGRADE = false;
 
 async function main() {
     const owner = new Wallet(process.env.OWNER_PRIVATE_KEY as string, ethers.provider);
+    await setBalance(owner.address, ethers.utils.parseEther("1000"));
     const signerAddress = new Wallet(process.env.SIGNER_PRIVATE_KEY as string, ethers.provider).address;
 
     let upgradeAuctionV2 = false;
@@ -89,7 +91,7 @@ async function main() {
     console.log(`Current ETH price: ${price} BUSD`)
     const deployed: { [key: string]: Contract } = {};
     for (const {name, proxy, upgrade, params, upgradeAddress} of contracts) {
-        const factory = await ethers.getContractFactory(name);
+        const factory = await ethers.getContractFactory(name, owner);
         let contract;
         if (proxy) {
             if (upgrade) {
