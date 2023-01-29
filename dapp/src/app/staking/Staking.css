@@ -1,5 +1,5 @@
 .staking {
-    padding: 64px;
+    padding: 0 64px 64px;
 }
 
 .staking-title {
@@ -8,7 +8,7 @@
 }
 
 .staking-tokens {
-    margin-top: 16px;
+    margin-top: 32px;
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
@@ -18,12 +18,13 @@
     margin-top: 32px;
 }
 
+.staking-tokens-info {
+    font-size: 24px;
+    text-transform: uppercase;
+}
+
 @media only screen and (max-width: 450px) {
     .staking {
         padding: 32px 0 0;
-    }
-
-    .staking-tokens {
-        flex-direction: column;
     }
 }
