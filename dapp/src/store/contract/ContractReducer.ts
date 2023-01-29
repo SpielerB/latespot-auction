@@ -36,18 +36,58 @@ const getTransactionKey = (args: WatchTransaction) => {
 
 export const updateContractModel = createAction<Contract | undefined>("contract/model/update");
 
-
 export const watchTransaction = createAsyncThunk<void, WatchTransaction, { state: RootState }>("contract/transaction/watch", async ({transaction}, thunkAPI) => {
-    const tx = await transaction;
-    await tx.wait();
-    if (!syncedContract) throw "Contract is not available";
-    const updatedModel = await internalContractSync(syncedContract);
-    thunkAPI.dispatch(updateContractModel(updatedModel));
+    try {
+        const tx = await transaction;
+        await tx.wait();
+        if (!syncedContract) throw "Contract is not available";
+        thunkAPI.dispatch(syncContract());
+    } catch (error: any) {
+        if (error.code !== "ACTION_REJECTED") {
+            throw error;
+        }
+    }
 });
 
 export const syncContract = createAsyncThunk<Contract | undefined, void, { state: RootState }>("contract/model/sync", async (ignore, thunkAPI) => {
     if (!syncedContract) return undefined;
-    return await internalContractSync(syncedContract, thunkAPI.getState().contract.contractModel);
+    if (!thunkAPI.getState().contract.rawTokensSyncPending) {
+        thunkAPI.dispatch(syncRawTokens());
+    }
+    const contract = syncedContract;
+    const updatedContractModel = await internalContractSync(contract);
+    if (syncedContract !== contract) {
+        return undefined;
+    }
+    const existingContractModel = thunkAPI.getState().contract.contractModel;
+    if (!deepEqual(updatedContractModel, existingContractModel)) {
+        thunkAPI.dispatch(updateContractModel(updatedContractModel));
+        const currentApplicationState = thunkAPI.getState().application.displayState;
+        let applicationState = DisplayState.PRE_AUCTION;
+        if (updatedContractModel.privateAuction.hasStarted) {
+            applicationState = DisplayState.PRIVATE_AUCTION;
+        }
+        if (updatedContractModel.privateAuction.hasStarted && !updatedContractModel.privateAuction.isActive) {
+            applicationState = DisplayState.PRE_PUBLIC_AUCTION;
+        }
+        if (updatedContractModel.privateAuction.hasStarted && updatedContractModel.publicAuction.hasStarted) {
+            applicationState = DisplayState.PUBLIC_AUCTION;
+        }
+        if (updatedContractModel.publicAuction.hasStarted && !updatedContractModel.publicAuction.isActive) {
+            applicationState = DisplayState.PRE_MINT;
+        }
+        if (updatedContractModel.tokensMinted) {
+            applicationState = DisplayState.PRE_REVEAL;
+        }
+        if (updatedContractModel.tokensRevealed) {
+            applicationState = DisplayState.STAKING;
+        }
+        if (applicationState !== currentApplicationState) {
+            thunkAPI.dispatch(setContractState(applicationState));
+        }
+        return updatedContractModel;
+    }
+    return existingContractModel;
 })
 
 export const stake = createAsyncThunk<void, ContractToken, { state: RootState }>("contract/token/stake", async (token, thunkAPI) => {
@@ -118,6 +158,32 @@ export const buyTickets = createAsyncThunk<void, number, { state: RootState }>("
     thunkAPI.dispatch(watchTransaction({transaction: transactionPromise, type: "buy"}))
 })
 
+export const updateContractSyncLoop = createAsyncThunk<void, EthersContract | undefined | null, { state: RootState }>("contract/sync/update", (contract, thunkAPI) => {
+    const contractRemoved = syncedContract && !contract
+    syncedContract = contract;
+    if (!contract) {
+        if (contractRemoved) {
+            thunkAPI.dispatch(updateContractModel(undefined));
+        }
+        return;
+    }
+    const syncContractLoop = async () => {
+        if (syncedContract !== contract) {
+            return;
+        }
+        try {
+            thunkAPI.dispatch(syncContract());
+        } catch (e) {
+            console.error("Error while fetching contract model", e)
+        }
+        if (syncedContract === contract) {
+            setTimeout(syncContractLoop, 10000);
+        }
+
+    };
+    setTimeout(syncContractLoop, 0);
+});
+
 export const updateContractMetadata = createAction<ContractMetadata>("contract/metadata/update");
 
 const syncRawTokens = createAsyncThunk<ContractToken[], void, { state: RootState }>("contract/tokens/sync", async (ignore, thunkAPI) => {
@@ -146,8 +212,7 @@ const syncRawTokens = createAsyncThunk<ContractToken[], void, { state: RootState
 const syncTokenMetadata = createAsyncThunk<TokenMetadata, ContractToken, { state: RootState }>("contract/tokens/metadata/sync", async (rawToken, thunkAPI) => {
     if (!syncedContract) throw "No contract connected";
     const response = await fetch(rawToken.tokenURI);
-    const data = await response.json();
-    return data;
+    return await response.json();
 });
 
 const internalContractSync = async (contract: EthersContract): Promise<Contract> => {
@@ -207,58 +272,6 @@ const internalContractSync = async (contract: EthersContract): Promise<Contract>
         stakingLevels: (await stakingLevels).map((level: BigNumber) => level.toNumber())
     };
 }
-
-export const updateContractSyncLoop = createAsyncThunk<void, EthersContract | undefined | null, { state: RootState }>("contract/sync/update", (contract, thunkAPI) => {
-    const contractRemoved = syncedContract && !contract
-    syncedContract = contract;
-    if (!contract) {
-        if (contractRemoved) {
-            thunkAPI.dispatch(updateContractModel(undefined));
-        }
-        return;
-    }
-    const syncContractLoop = async () => {
-        if (syncedContract !== contract) {
-            return;
-        }
-        const updatedContractModel = await internalContractSync(contract, thunkAPI.getState().contract.contractModel);
-        if (syncedContract !== contract) {
-            return;
-        }
-        const existingContractModel = thunkAPI.getState().contract.contractModel;
-        if (!deepEqual(updatedContractModel, existingContractModel)) {
-            thunkAPI.dispatch(updateContractModel(updatedContractModel));
-            const currentApplicationState = thunkAPI.getState().application.displayState;
-            let applicationState = DisplayState.PRE_AUCTION;
-            if (updatedContractModel.privateAuction.hasStarted) {
-                applicationState = DisplayState.PRIVATE_AUCTION;
-            }
-            if (updatedContractModel.privateAuction.hasStarted && !updatedContractModel.privateAuction.isActive) {
-                applicationState = DisplayState.PRE_PUBLIC_AUCTION;
-            }
-            if (updatedContractModel.privateAuction.hasStarted && updatedContractModel.publicAuction.hasStarted) {
-                applicationState = DisplayState.PUBLIC_AUCTION;
-            }
-            if (updatedContractModel.publicAuction.hasStarted && !updatedContractModel.publicAuction.isActive) {
-                applicationState = DisplayState.PRE_MINT;
-            }
-            if (updatedContractModel.tokensMinted) {
-                applicationState = DisplayState.PRE_REVEAL;
-            }
-            if (updatedContractModel.tokensRevealed) {
-                applicationState = DisplayState.STAKING;
-            }
-            if (applicationState !== currentApplicationState) {
-                thunkAPI.dispatch(setContractState(applicationState));
-            }
-        }
-        if (syncedContract === contract) {
-            setTimeout(syncContractLoop, 10000);
-        }
-
-    };
-    setTimeout(syncContractLoop, 0);
-});
 
 const initialState: ContractState = {
     metadata: {
@@ -325,41 +338,28 @@ const reducer = createReducer(initialState, builder => {
             // TODO: Error handling
         })
         .addCase(watchTransaction.pending, (state, action) => {
-            state.pendingTransactions[getKey(action.meta.arg)] = {
+            state.pendingTransactions[getTransactionKey(action.meta.arg)] = {
                 pending: true,
                 successful: false,
-                error: false,
-                errorMessage: undefined
+                error: false
             };
         })
         .addCase(watchTransaction.fulfilled, (state, action) => {
-            state.pendingTransactions[getKey(action.meta.arg)] = {
+            state.pendingTransactions[getTransactionKey(action.meta.arg)] = {
                 pending: false,
                 successful: true,
-                error: false,
-                errorMessage: undefined
+                error: false
             };
         })
         .addCase(watchTransaction.rejected, (state, action) => {
-            state.pendingTransactions[getKey(action.meta.arg)] = {
+            state.pendingTransactions[getTransactionKey(action.meta.arg)] = {
                 pending: false,
                 successful: false,
                 error: true,
-                errorMessage: action.error.message
+                errorMessage: action.error.message || "Unexpected error occurred during transaction"
             };
         });
 });
-
-const getKey = (args: WatchTransaction) => {
-    switch (args.type) {
-        case 'stake':
-        case 'unstake':
-            return `token.${args.token.id}`;
-        case 'buy':
-            return "buy";
-    }
-    return "unknown";
-}
 
 export const useContractModel = () => createSelectorHook()((state: RootState) => state.contract.contractModel);
 export const useContractTokens = () => createSelectorHook()((state: RootState) => state.contract.rawTokens);
