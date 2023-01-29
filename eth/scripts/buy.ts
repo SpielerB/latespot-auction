@@ -52,7 +52,7 @@ async function main() {
         const value = price.mul(+tokenCount);
 
         console.log(`${walletAddress} buys ${tokenCount} tokens in the public auction for ${ethers.utils.formatEther(value)} ETH`)
-        await walletContract.buyPrivateAuction(createSignature(walletAddress, value, "private", signer), {value});
+        await walletContract.buyPublicAuction(createSignature(walletAddress, value, "public", signer), {value});
     }
     console.log("Done");
 }
