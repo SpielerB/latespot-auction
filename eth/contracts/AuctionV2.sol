@@ -270,7 +270,7 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
     */
     function preMint(uint256 count) public onlyOwner {
         for (uint256 i; i < count; ++i) {
-            _safeMint(owner(), _tokenCounter.current());
+            _safeMint(owner(), _tokenCounter.current() + 1);
             _tokenCounter.increment();
         }
         preMintCount = _tokenCounter.current();
@@ -304,7 +304,7 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
                 localTotalTickets = privateAuctionTicketMap[localHolder] + publicAuctionTicketMap[localHolder];
             }
 
-            _safeMint(localHolder, _tokenCounter.current());
+            _safeMint(localHolder, _tokenCounter.current() + 1);
             localNextHolderTokenIndex++;
             _tokenCounter.increment();
         }
