@@ -7,7 +7,7 @@ async function main() {
     const signer = new Wallet(process.env.OWNER_PRIVATE_KEY as string, ethers.provider);
     const contract = new Contract(address, abi, signer);
 
-    await contract.requestReveal('https://ipfs.squirreldegens.com/ipfs/QmRcdgCmNb7e5uL3r1Ze8FSrNLUHqrEUA8iwTuLpgShJTE');
+    await contract.requestReveal('https://ipfs.squirreldegens.com/ipfs/QmZMpAq4Xagx1VTEM3P9mjze6LEzctmq9N7mFUamiSirUL');
     console.log('Revealed')
 }
 
