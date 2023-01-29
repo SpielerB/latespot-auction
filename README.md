@@ -79,3 +79,11 @@ npx hardhat run .\eth\scripts\mint.ts
 ```shell
 npx hardhat run .\eth\scripts\reveal.ts
 ```
+
+### Mine blocks (interactive)
+
+Some actions such as staking require blocks to be mined so that the time can move forward.
+
+```shell
+npx hardhat run .\eth\scripts\mine.ts
+```
