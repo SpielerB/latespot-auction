@@ -6,7 +6,7 @@ import {configureChains, createClient, mainnet, WagmiConfig} from "wagmi";
 import React from 'react';
 import {hardhat} from '@wagmi/chains';
 
-export const projectId = "d8e0f3f439c36190b67fbb7fca038784";
+export const projectId = import.meta.env.VITE_WALLETCONNECT_CLOUD_KEY;
 
 let chains = [mainnet];
 if (import.meta.env.DEV) {
