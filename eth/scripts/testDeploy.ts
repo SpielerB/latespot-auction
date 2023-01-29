@@ -78,15 +78,14 @@ async function main() {
         {
             name: 'AuctionV2Upgradeable',
             proxy: true,
-            params: ({MockChainLink}) => [
+            params: ({MockLinkToken, MockVRFWrapper}) => [
                 'LateSpotNFT',
                 'LSNFT',
                 signerAddress,
                 'https://pastebin.com/dl/cH4NfnWU',
                 'https://pastebin.com/dl/cH4NfnWU',
-                MockChainLink.address,
-                43,
-                "0xd89b2bf150e3b9e13446986e571fb9cab24b13cea0a43ea20a6049a85cc807cc"
+                MockLinkToken.address,
+                MockVRFWrapper.address,
             ],
             upgrade: upgradeAuctionV2,
             upgradeAddress: auctionV2UpgradeAddress
