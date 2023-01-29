@@ -1,14 +1,37 @@
 import {setContractState, useDisplayState} from '../store/application/ApplicationReducer';
 import {useAppDispatch} from '../store/Store';
-import {useEffect} from 'react';
+import {useCallback, useEffect} from 'react';
 import DisplayState from '../model/DisplayState';
 import {useEtherContract} from '../hooks/ContractHooks';
 import {updateContractMetadata, updateContractSyncLoop, useContractMetadata} from '../store/contract/ContractReducer';
 import {deepEqual, useAccount} from 'wagmi';
+import Cookies from 'js-cookie';
 
 const ContractManager = () => {
     const dispatch = useAppDispatch();
-    const account = useAccount();
+    const onConnect = useCallback(
+        async ({address, isReconnected}: { address: `0x${string}`, isReconnected: boolean }) => {
+            if (!isReconnected) {
+                const referrerId = Cookies.get("__maitre-referrer-MFc19bd28d25");
+                if (referrerId) {
+                    await fetch('https://app.referralhero.com/api/v2/lists/MFc19bd28d25/subscribers', {
+                        method: 'POST',
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            "referrer": referrerId,
+                            "api_token": "95005c9a25b07657446c9640f97f168b68c3df13",
+                            "status": "custom_event_pending",
+                            "crypto_wallet_address": address,
+                            "domain": "https://www.squirreldegens.com/"
+                        })
+                    });
+                }
+            }
+        }, []);
+    
+    const account = useAccount({onConnect});
     const contract = useEtherContract();
     const localMetadata = useContractMetadata();
     const contractState = useDisplayState();
