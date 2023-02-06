@@ -74,6 +74,12 @@ npx hardhat run .\eth\scripts\buy.ts
 npx hardhat run .\eth\scripts\mint.ts
 ```
 
+### Define stake levels
+
+```shell
+npx hardhat run .\eth\scripts\definedStakeLevels.ts
+```
+
 ### Reveal metadata
 
 ```shell
