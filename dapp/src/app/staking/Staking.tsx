@@ -31,7 +31,7 @@ export const Staking = () => {
     }, [tokens, tokensPending, contractModel]);
 
     return (
-        <div className={"staking"}>
+        <div className="staking">
             <h2 className="staking-title">STAKING TERMINAL</h2>
             <div className="mint-wallet">
                 <div className="mint-wallet-p"><h3 className="mint-h3">CONNECTED WALLET: </h3>{walletAddress}</div>
