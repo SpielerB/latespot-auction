@@ -50,13 +50,12 @@ const ConnectWalletButton = ({mobile}: ButtonProps) => {
     );
 }
 
-const ClaimTicketsButton = ({mobile}: ButtonProps) => {
+const BuyTicketsButton = ({mobile}: ButtonProps) => {
     const dispatch = useAppDispatch();
-    const displayState = useDisplayState();
 
     return (
         <button className={buttonClassNames(mobile)} onClick={() => dispatch(openModal(ModalTarget.AUCTION))}>
-            Claim Tickets
+            Buy Tickets
         </button>
     );
 }
@@ -80,7 +79,7 @@ const WalletButton = ({portalElement, mobile}: WalletButtonProps) => {
         case DisplayState.PRIVATE_AUCTION:
         case DisplayState.PRE_PUBLIC_AUCTION:
         case DisplayState.PUBLIC_AUCTION:
-            button = <ClaimTicketsButton mobile={mobile}/>;
+            button = <BuyTicketsButton mobile={mobile}/>;
             break;
         case DisplayState.STAKING:
             button = <StakeButton mobile={mobile}/>;
