@@ -5,6 +5,7 @@ import {useAppDispatch} from "../../store/Store";
 import {BigNumber, ethers} from "ethers";
 import {useAddress} from "../../hooks/WalletHooks";
 import InfoDialog from "../InfoDialog";
+import warning from '../warning.svg'
 import Auction from "../../model/Auction";
 
 
@@ -24,19 +25,19 @@ const MintHeader = (props: AuctionProps) => {
 
     const ticketsSold = props.auction?.ticketsSold ?? 0;
     const ticketSupply = props.auction?.ticketSupply ?? 0;
-    const soldString = ticketsSold.toLocaleString('de-CH');
-    const supplyString = ticketSupply.toLocaleString('de-CH');
-    const ethereum = ethers.utils.formatEther(BigNumber.from(props.auction?.price));
+    const ticketStock = ticketSupply - ticketsSold;
+    const stockString = ticketStock.toLocaleString('de-CH');
 
+    const ethPrice = ethers.utils.formatEther(props.auction?.price ?? 0);
 
     return (
         <div className="mint-header">
             <h4 className="mint-h4">phase #{props.phase}</h4>
             <h1 className="mint-h1">{props.title}</h1>
             <div className="mint-mint-p">
-                You currently have {ticketsInWallet} tickets.
+                You currently have {ticketsInWallet} {ticketsInWallet == 1 ? "ticket" : "tickets"}.
             </div>
-            <h3 className="mint-h3">{soldString} / {supplyString} TICKETS LEFT </h3>
+            <h3 className="mint-h3">{stockString} TICKETS LEFT </h3>
             <div className="mint-live">
                 <img
                     src="https://assets.website-files.com/621e34ea4b3095856cff1ff8/6226563ba9df1423307642dd_live-icon.svg"
@@ -45,7 +46,7 @@ const MintHeader = (props: AuctionProps) => {
                     className="mint-icon"
                 />
                 <div className="mint-live-p">
-                    Ticket Price: 42 USD = {ethereum} $ETH
+                    Ticket Price: {ethPrice} $ETH
                 </div>
             </div>
         </div>
@@ -61,9 +62,9 @@ const MintSalesForm = (props: SalesProps) => {
     const [showInfo, setShowInfo] = useState<boolean>(false);
     const [showError, setShowError] = useState<boolean>(false);
     const price = BigNumber.from(props.auction?.price);
-    const ethereum = ethers.utils.formatEther(price);
+    const ethPrice = ethers.utils.formatEther(price);
     const totalPrice = (+ethers.utils.formatEther(price.mul(amount))).toLocaleString('de-CH', {
-        minimumFractionDigits: 3,
+        minimumFractionDigits: 2,
         maximumFractionDigits: 3
     });
 
@@ -109,8 +110,11 @@ const MintSalesForm = (props: SalesProps) => {
     }, [transaction?.error])
 
     useEffect(() => {
-        if(maxTickets < amount){
+        if (maxTickets < amount) {
             setAmount(maxTickets);
+        }
+        if (ticketCount == 0) {
+            setAmount(1);
         }
     }, [maxTickets])
 
@@ -139,7 +143,7 @@ const MintSalesForm = (props: SalesProps) => {
                 {isEligible && <>
                     <h3 className="mint-h3">summary:</h3>
                     <div className="mint-buy-summary">
-                        {ethereum} $ETH x {amount} {amount > 1 ? "tickets" : "ticket"} =
+                        {ethPrice} $ETH x {amount} {amount > 1 ? "tickets" : "ticket"} =
                         <span className="mint-buy-summary-bold"> {totalPrice} $ETH</span>
                     </div>
                 </>}
@@ -151,7 +155,7 @@ const MintSalesForm = (props: SalesProps) => {
             <InfoDialog
                 iconSrc="https://assets.website-files.com/621e34ea4b3095856cff1ff8/6226563ba9df1423307642dd_live-icon.svg"
                 title="Confirmation"
-                confirmLabel="Confirm purchase"
+                confirmLabel="Accept and Confirm purchase"
                 open={showInfo}
                 cancelLabel="Cancel purchase"
                 onConfirm={() => {
@@ -160,11 +164,38 @@ const MintSalesForm = (props: SalesProps) => {
                 }}
                 onCancel={() => setShowInfo(false)}
             >
-                <div>Time Wait</div>
-                <div>Gas Gas</div>
+                <div className="dialog-text">
+                    <h3 className="mint-buy-h4">You are about to buy {amount} ticket(s)</h3>
+                    <p>Please take a minute and read the following information carefully.</p>
+                </div>
+                <div className="dialog-text">
+                    <h3 className="mint-buy-h4">Tickets</h3>
+                    <p>Please note that a ticket is not a token until it has been minted.
+                        We will mint all NFTs a maximum of 96 hours after the public sale has ended.</p>
+                </div>
+                <div className="dialog-text">
+                    <h3 className="mint-buy-h4">Gas Price</h3>
+                    <p>In addition to the price of the ticket, a gas fee is added by the transaction
+                        on the Blockchain. The gas fee is not controlled by us and is subject to change.
+                        Websites like <a className="mint-link" href="https://etherscan.io/gastracker"
+                                         target="blank">Etherscan</a> can give you a
+                        rough overview of the current gas price.
+                    </p>
+                </div>
+                <div className="dialog-text">
+                    <h3 className="mint-buy-h4">Buying may take a while</h3>
+                    <p>The buying process may take a couple of minutes to finish based on the current
+                        network usage. Please be patient and wait for the tickets to appear on the website.
+                    </p>
+                </div>
+                <div className="dialog-text">
+                    <h3 className="mint-buy-h4">Confirmation</h3>
+                    <p>By clicking the "ACCEPT AND CONFIRM PURCHASE" button, you confirm
+                        that you have read and understood the presented information about the purchase.</p>
+                </div>
             </InfoDialog>
             <InfoDialog
-                iconSrc="https://assets.website-files.com/621e34ea4b3095856cff1ff8/6226563ba9df1423307642dd_live-icon.svg"
+                iconSrc={warning}
                 title="Error"
                 confirmLabel="Confirm"
                 open={showError}
@@ -192,8 +223,9 @@ const AuctionPage = (props: AuctionProps) => {
             <div className="mint-info">
                 <h3 className="mint-h3">ERC-721S BENEFITS</h3>
                 <p className="mint-info-p">
-                    You will only have to buy the tickets. Every other cost to mint the NFT is paid by our team
-                    through the ERC-721S contract. We will bunk mint all NFTs after a maximum of 96 hours.
+                    You will only have to buy the tickets. All other costs to mint the NFT are paid by our team through
+                    the ERC-721S contract.
+                    We will bulk mint all NFTs a maximum of 96 hours after the public sale has ended.
                 </p>
             </div>
         </div>);
