@@ -27,20 +27,20 @@ const InfoDialog = (props: PropsWithChildren<InfoDialogProps>) => {
             >
                 <div className="dialog-title">
                     <img
-                        src="https://assets.website-files.com/621e34ea4b3095856cff1ff8/6226563ba9df1423307642dd_live-icon.svg"
+                        src={props.iconSrc}
                         loading="lazy"
                         alt=""
                         className="dialog-icon"
                     />
                     <h2 className="dialog-h2">{props.title}</h2>
                     <img
-                        src="https://assets.website-files.com/621e34ea4b3095856cff1ff8/6226563ba9df1423307642dd_live-icon.svg"
+                        src={props.iconSrc}
                         loading="lazy"
                         alt=""
                         className="dialog-icon"
                     />
                 </div>
-                <div className="dialog-text">
+                <div className="dialog-content">
                     {props.children}
                 </div>
                 <div className="dialog-buttons">

@@ -12,15 +12,23 @@
 }
 
 .dialog-box {
-    position: relative;
     margin: auto 0;
     background-color: rgb(15, 15, 15);
     border-color: white;
     border-style: solid;
     padding: 3.5em 2.6em 2em;
     border-width: 1px;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden;
+    height: calc(100% - 5.5em);
+    display: flex;
+    flex-direction: column;
+    max-width: 49em;
+}
+
+.dialog-content {
+    flex-grow: 1;
+    overflow: auto;
+    margin-bottom: 1.3em;
 }
 
 .dialog-title {
@@ -39,12 +47,17 @@
 
 .dialog-icon {
     margin: auto 1em;
-    width: 2.2em;
+    height: 2.2em;
 }
-
 
 .dialog-text {
     padding-bottom: 1.3em;
+    margin-right: 0.5em;
+}
+
+.mint-link{
+    text-decoration-line: underline;
+    text-decoration-color:  #0cffcf;
 }
 
 .dialog-buttons {
