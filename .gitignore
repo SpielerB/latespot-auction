@@ -3,6 +3,7 @@
 
 dist
 dapp-old
+server_old
 
 node_modules
 .env

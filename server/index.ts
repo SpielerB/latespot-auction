@@ -1,11 +1,13 @@
-import {Contract, ethers} from 'ethers';
+import {AbiCoder, Contract, JsonRpcProvider, keccak256, Wallet} from 'ethers';
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
-import helmet from 'helmet';
 import morgan from 'morgan';
 import * as dotenv from 'dotenv';
+import {arrayify} from '@ethersproject/bytes'
 import {abi, address} from './contract/AuctionV2Upgradeable.json';
+
+const helmet = require("helmet");
 
 dotenv.config();
 
@@ -14,9 +16,9 @@ const port = parseInt((process.env.PORT || 5000) as string, 10);
 const privateKey = process.env.SIGNER_PRIVATE_KEY as string;
 const network = process.env.NETWORK;
 
-const provider = new ethers.providers.JsonRpcProvider(network);
+const provider = new JsonRpcProvider(network);
 
-const signer = new ethers.Wallet(privateKey, provider);
+const signer = new Wallet(privateKey, provider);
 
 const contract = new Contract(address, abi, signer);
 
@@ -60,9 +62,9 @@ app.post('/sign', async (req, res) => {
             return;
         }
         const auctionPhase = isPrivateAuction ? "private" : "public";
-        const payload = ethers.utils.defaultAbiCoder.encode(['address', 'uint256', 'string'], [address, value, auctionPhase]);
-        const hash = ethers.utils.keccak256(payload);
-        const signature = await signer.signMessage(ethers.utils.arrayify(hash));
+        const payload = AbiCoder.defaultAbiCoder().encode(['address', 'uint256', 'string'], [address, value, auctionPhase]);
+        const hash = keccak256(payload);
+        const signature = await signer.signMessage(arrayify(hash));
         res.send(signature);
     } catch (error) {
         console.error(error);
