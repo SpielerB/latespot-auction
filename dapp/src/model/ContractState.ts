@@ -7,7 +7,7 @@ import ContractToken from './ContractToken';
 export default interface ContractState {
     metadata: ContractMetadata;
     contractModel?: Contract;
-    rawTokens: ContractToken[]
+    rawTokens?: ContractToken[]
     tokenMetadata: {
         [key: number]: TokenMetadata
     };

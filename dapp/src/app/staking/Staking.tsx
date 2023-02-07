@@ -43,8 +43,7 @@ export const Staking = () => {
                 </h3>
             </p>
             <div className="staking-tokens">
-                {!showTokensLoading && tokens.map(token => <Token key={`token.${token.id}`} token={token}/>)}
-                {showTokensLoading && <div>Loading tokens...</div>}
+                {tokens && !showTokensLoading && tokens.map(token => <Token key={`token.${token.id}`} token={token}/>)}
             </div>
             <div className="staking-info">
                 <h2 className="staking-title">IMPORTANT STAKING INFORMATION</h2>

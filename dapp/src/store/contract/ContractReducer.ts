@@ -200,7 +200,7 @@ const syncRawTokens = createAsyncThunk<ContractToken[], void, { state: RootState
             staked: await syncedContract.staked(id),
             tokenURI: await syncedContract.tokenURI(id),
         };
-        const existingToken = loadedTokens.find(token => token.id === id);
+        const existingToken = loadedTokens?.find(token => token.id === id);
         const pendingSync = thunkAPI.getState().contract.tokenMetadataSyncPending[id];
         if (!pendingSync && (!existingToken || existingToken.tokenURI !== token.tokenURI)) {
             thunkAPI.dispatch(syncTokenMetadata(token));
@@ -280,7 +280,6 @@ const initialState: ContractState = {
     metadata: {
         started: false
     },
-    rawTokens: [],
     tokenMetadata: {},
     pendingTransactions: {},
     contractSyncPending: false,
