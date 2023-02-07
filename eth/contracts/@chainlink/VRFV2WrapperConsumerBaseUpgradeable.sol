@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.17;
 
 import "@chainlink/contracts/src/v0.8/interfaces/LinkTokenInterface.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/VRFV2WrapperInterface.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "hardhat/console.sol";
 
 /** *******************************************************************************
  * @notice Interface for contracts using VRF randomness through the VRF V2 wrapper
@@ -79,9 +78,5 @@ abstract contract VRFV2WrapperConsumerBaseUpgradeable is Initializable {
     function rawFulfillRandomWords(uint256 _requestId, uint256[] memory _randomWords) external {
         require(msg.sender == address(VRF_V2_WRAPPER), "only VRF V2 wrapper can fulfill");
         fulfillRandomWords(_requestId, _randomWords);
-    }
-
-    function test() external {
-        console.log("BANANA");
     }
 }
