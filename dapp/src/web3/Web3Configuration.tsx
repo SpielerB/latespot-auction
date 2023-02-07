@@ -2,7 +2,7 @@ import {EthereumClient, modalConnectors, walletConnectProvider,} from "@web3moda
 
 import {Web3Modal} from "@web3modal/react";
 
-import {configureChains, createClient, mainnet, WagmiConfig} from "wagmi";
+import {configureChains, createClient, goerli, mainnet, WagmiConfig} from "wagmi";
 import React from 'react';
 import {hardhat} from '@wagmi/chains';
 
@@ -11,6 +11,9 @@ export const projectId = import.meta.env.VITE_WALLETCONNECT_CLOUD_KEY;
 let chains = [mainnet];
 if (import.meta.env.DEV) {
     chains = [hardhat];
+}
+if (import.meta.env.VITE_TEST) {
+    chains = [goerli];
 }
 
 // Wagmi client
