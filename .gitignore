@@ -6,8 +6,7 @@ dapp-old
 server_old
 
 node_modules
-.env
-.env.production
+.env*
 coverage
 coverage.json
 typechain
