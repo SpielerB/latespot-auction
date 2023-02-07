@@ -213,7 +213,9 @@ const syncRawTokens = createAsyncThunk<ContractToken[], void, { state: RootState
 const syncTokenMetadata = createAsyncThunk<TokenMetadata, ContractToken, { state: RootState }>("contract/tokens/metadata/sync", async (rawToken, thunkAPI) => {
     if (!syncedContract) throw "No contract connected";
     const response = await fetch(rawToken.tokenURI);
-    return await response.json();
+    const metadata = await response.json();
+    metadata.image = `https://ipfs.squirreldegens.com/ipfs/${metadata.image.replaceAll("ipfs://", "")}`
+    return metadata;
 });
 
 const internalContractSync = async (contract: EthersContract): Promise<Contract> => {
