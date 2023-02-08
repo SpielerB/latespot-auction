@@ -9,7 +9,6 @@ import {
     useTokenTransaction
 } from '../../store/contract/ContractReducer';
 import ContractToken from '../../model/ContractToken';
-import TokenMetadata from '../../model/TokenMetadata';
 import deadSquirrel from './deadSquirrel.png'
 import {PropsWithChildren, useCallback, useState} from 'react';
 import InfoDialog from '../InfoDialog';
@@ -17,16 +16,6 @@ import {duration} from 'moment';
 
 interface TokenProps {
     token?: ContractToken;
-}
-
-const defaultTokenMetadata: TokenMetadata = {
-    name: "Default Squirrel Token",
-    description: "This is the default squirrel token used as a placeholder",
-    image: deadSquirrel,
-    attributes: {
-        level: 0
-    },
-    properties: []
 }
 
 const TokenMark = ({children, visible}: PropsWithChildren<{ visible?: boolean }>) => {
@@ -288,7 +277,11 @@ const EmptyToken = () => {
     return (
         <div className="token">
             <div className="token-mark">NO SQUIRREL FOUND :(</div>
-            <img className="token-image" src={deadSquirrel} alt="Placeholder squirrel"/>
+            <img
+                className="token-image"
+                src="https://prod.squirreldegens.com/deadSquirrel.png"
+                alt="Placeholder squirrel"
+            />
             <div className="token-control">
                 <button className="mint-button w-button token-stake-button" disabled>Stake</button>
             </div>
