@@ -141,7 +141,7 @@ export const buyTickets = createAsyncThunk<void, number, { state: RootState }>("
 
     const response = await fetch(`${import.meta.env.VITE_API_URL}/sign`, {
         method: "POST",
-        body: JSON.stringify({address, value}),
+        body: JSON.stringify({address, value: value.toString()}),
         headers: {
             "Content-Type": "application/json"
         }
@@ -212,67 +212,43 @@ const syncRawTokens = createAsyncThunk<ContractToken[], void, { state: RootState
 
 const syncTokenMetadata = createAsyncThunk<TokenMetadata, ContractToken, { state: RootState }>("contract/tokens/metadata/sync", async (rawToken, thunkAPI) => {
     if (!syncedContract) throw "No contract connected";
-    const response = await fetch(rawToken.tokenURI);
+    let tokenURI = rawToken.tokenURI;
+    if (tokenURI.startsWith("ipfs://")) {
+        tokenURI = `https://ipfs.squirreldegens.com/ipfs/${tokenURI.replaceAll("ipfs://", "")}`
+    }
+    const response = await fetch(tokenURI);
     const metadata = await response.json();
     metadata.image = `https://ipfs.squirreldegens.com/ipfs/${metadata.image.replaceAll("ipfs://", "")}`
     return metadata;
 });
 
 const internalContractSync = async (contract: EthersContract): Promise<Contract> => {
-
-    // General
-    const mintedPromise = contract.minted();
-    const revealedPromise = contract.revealed();
-    const ticketsPromise = contract.tickets();
-    const whitelistedPromise = contract.whitelisted();
-    const stakingLevels = contract.stakeLevels();
-
-    // Private Auction
-    const privateStartedPromise = contract.privateAuctionStarted();
-    const privateActivePromise = contract.privateAuctionActive();
-    const privateStoppedPromise = contract.privateAuctionStopped();
-    const privateTicketsPromise = contract.privateAuctionTickets();
-    const privateTicketsPerWalletPromise = contract.privateAuctionTicketsPerWallet();
-    const privatePricePromise = contract.privateAuctionPrice();
-    const privateTicketCountPromise = contract.privateAuctionTicketCount();
-    const privateTicketSupplyPromise = contract.privateAuctionTicketSupply();
-
-    // Public Auction
-    const publicStartedPromise = contract.publicAuctionStarted();
-    const publicActivePromise = contract.publicAuctionActive();
-    const publicStoppedPromise = contract.publicAuctionStopped();
-    const publicTicketsPromise = contract.publicAuctionTickets();
-    const publicTicketsPerWalletPromise = contract.publicAuctionTicketsPerWallet();
-    const publicPricePromise = contract.publicAuctionPrice();
-    const publicTicketCountPromise = contract.publicAuctionTicketCount();
-    const publicTicketSupplyPromise = contract.publicAuctionTicketSupply();
-
     return {
         privateAuction: {
-            hasStarted: await privateStartedPromise,
-            isActive: await privateActivePromise,
-            hasStopped: await privateStoppedPromise,
-            walletTickets: (await privateTicketsPromise).toNumber(),
-            ticketsSold: (await privateTicketCountPromise).toNumber(),
-            ticketSupply: (await privateTicketSupplyPromise).toNumber(),
-            ticketLimit: (await privateTicketsPerWalletPromise).toNumber(),
-            price: (await privatePricePromise).toString()
+            hasStarted: await contract.privateAuctionStarted(),
+            isActive: await contract.privateAuctionActive(),
+            hasStopped: await contract.privateAuctionStopped(),
+            walletTickets: (await contract.privateAuctionTickets()).toNumber(),
+            ticketsSold: (await contract.privateAuctionTicketCount()).toNumber(),
+            ticketSupply: (await contract.privateAuctionTicketSupply()).toNumber(),
+            ticketLimit: (await contract.privateAuctionTicketsPerWallet()).toNumber(),
+            price: (await contract.privateAuctionPrice()).toString()
         },
         publicAuction: {
-            hasStarted: await publicStartedPromise,
-            isActive: await publicActivePromise,
-            hasStopped: await publicStoppedPromise,
-            walletTickets: (await publicTicketsPromise).toNumber(),
-            ticketsSold: (await publicTicketCountPromise).toNumber(),
-            ticketSupply: (await publicTicketSupplyPromise).toNumber(),
-            ticketLimit: (await publicTicketsPerWalletPromise).toNumber(),
-            price: (await publicPricePromise).toString()
+            hasStarted: await contract.publicAuctionStarted(),
+            isActive: await contract.publicAuctionActive(),
+            hasStopped: await contract.publicAuctionStopped(),
+            walletTickets: (await contract.publicAuctionTickets()).toNumber(),
+            ticketsSold: (await contract.publicAuctionTicketCount()).toNumber(),
+            ticketSupply: (await contract.publicAuctionTicketSupply()).toNumber(),
+            ticketLimit: (await contract.publicAuctionTicketsPerWallet()).toNumber(),
+            price: (await contract.publicAuctionPrice()).toString()
         },
-        tokensMinted: await mintedPromise,
-        tokensRevealed: await revealedPromise,
-        walletTickets: (await ticketsPromise).toNumber(),
-        whitelisted: await whitelistedPromise,
-        stakingLevels: (await stakingLevels).map((level: BigNumber) => level.toNumber())
+        tokensMinted: await contract.minted(),
+        tokensRevealed: await contract.revealed(),
+        walletTickets: (await contract.tickets()).toNumber(),
+        whitelisted: await contract.whitelisted(),
+        stakingLevels: (await contract.stakeLevels()).map((level: BigNumber) => level.toNumber())
     };
 }
 

@@ -11,11 +11,9 @@ import {
 import ContractToken from '../../model/ContractToken';
 import TokenMetadata from '../../model/TokenMetadata';
 import deadSquirrel from './deadSquirrel.png'
-import bronzePass from './bronzePass.png'
-import silverPass from './silverPass.png'
-import goldPass from './goldPass.png'
 import {PropsWithChildren, useCallback, useState} from 'react';
 import InfoDialog from '../InfoDialog';
+import {duration} from 'moment';
 
 interface TokenProps {
     token?: ContractToken;
@@ -42,10 +40,11 @@ const RealToken = ({token}: { token: ContractToken }) => {
     const [stakeConfirmationOpen, setStakeConfirmationOpen] = useState<boolean>(false);
     const [unStakeConfirmationOpen, setUnStakeConfirmationOpen] = useState<boolean>(false);
     const [upgradeConfirmationOpen, setUpgradeConfirmationOpen] = useState<boolean>(false);
+    const contractModel = useContractModel();
     const transaction = useTokenTransaction(token);
     const metadata = useTokenMetadata(token);
     const metadataPending = useTokenMetadataSyncPending(token);
-    const stakingDisabled = false && (transaction?.pending || !imageReady || metadataPending || (!token.staked && token.level > 0));
+    const stakingDisabled = transaction?.pending || !imageReady || metadataPending || (!token.staked && token.level > 0);
 
     const toggleStake = useCallback(() => {
         if (token.staked) {
@@ -85,32 +84,75 @@ const RealToken = ({token}: { token: ContractToken }) => {
         if (!token.staked && token.level > 0) {
             switch (token.level) {
                 case 1:
-                    return <img className="token-pass" src={bronzePass} alt="Bronze Pass"/>;
+                    return <img
+                        className="token-pass"
+                        src="https://prod.squirreldegens.com/bronzePass.png"
+                        alt="Bronze Pass"
+                    />;
                 case 2:
-                    return <img className="token-pass" src={silverPass} alt="Bronze Pass"/>;
+                    return <img
+                        className="token-pass"
+                        src="https://prod.squirreldegens.com/silverPass.png"
+                        alt="Silver Pass"
+                    />;
                 case 3:
-                    return <img className="token-pass" src={goldPass} alt="Bronze Pass"/>;
+                    return <img
+                        className="token-pass"
+                        src="https://prod.squirreldegens.com/goldPass.png"
+                        alt="Gold Pass"
+                    />;
             }
         }
-        let stakeText = "Stake";
+        let stakeText = "Stake Token";
         if (transaction?.pending) {
             stakeText = "Pending...";
         } else if (token.staked) {
             if (token.level > 0) {
-                stakeText = "Unstake & Upgrade";
+                stakeText = "Upgrade Token";
             } else {
-                stakeText = "Unstake";
+                stakeText = "Unstake Token";
             }
         }
 
+        const renderStakeTimer = () => {
+            if (!token.staked) return <div><br/>&nbsp;<br/></div>;
+            const time = token.stakeTime;
+            const level = token.level;
+            const nextTime = level >= 3 ? 0 : contractModel?.stakingLevels[level] ?? 0;
+            const remainingTime = nextTime - time;
+            if (level === 3 || remainingTime < 0) return <span>Max level reached<br/><br/></span>;
+            const future = duration().add(remainingTime, "seconds");
+
+            const days = future.asDays().toFixed(0);
+            const hours = future.hours();
+            const minutes = future.minutes();
+            const seconds = future.seconds();
+
+            return (
+                <div>
+                    <div className="mint-buy-h4">
+                        Time until you reach next level
+                    </div>
+                    <div>
+                        {days} days {hours} hrs {minutes} mins {seconds} secs
+                    </div>
+                </div>
+            )
+        }
+
         return (
-            <button
-                className="mint-button w-button token-stake-button"
-                onClick={toggleStake}
-                disabled={stakingDisabled}
-            >
-                {stakeText}
-            </button>
+            <div className="token-control-children">
+                <div className="stake-timer">
+                    {renderStakeTimer()}
+                </div>
+                <button
+                    className="mint-button w-button token-stake-button"
+                    onClick={toggleStake}
+                    disabled={stakingDisabled}
+                >
+                    {stakeText}
+                </button>
+            </div>
         );
     }
 

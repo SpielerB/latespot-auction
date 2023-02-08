@@ -42,21 +42,31 @@
 }
 
 .token-control {
+    border-top: solid 3px white;
     padding: 8px;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
     background-color: rgb(15, 15, 15);
-    flex-grow: 1;
-    justify-content: center;
+}
+
+.token-control-children {
+    display: flex;
+    flex-direction: column;
+}
+
+.stake-timer {
+    padding: 8px 0 16px;
+    text-align: center;
+    font-size: 20px;
 }
 
 .token-pass {
-    width: 150px
+    width: 150px;
+    align-self: center;
 }
 
 .token-stake-button {
-    align-self: normal;
     text-transform: uppercase;
     border: 1px solid white;
     background-color: rgb(15, 15, 15);
@@ -132,6 +142,13 @@
     .token-loader {
         position: absolute;
     }
+
+    .stake-timer {
+        padding: 16px 0 32px;
+        text-align: center;
+        font-size: 20px;
+    }
+
 }
 
 @media only screen and (max-width: 550px) {

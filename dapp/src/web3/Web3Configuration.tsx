@@ -31,14 +31,18 @@ const wagmiClient = createClient({
 const ethereumClient = new EthereumClient(wagmiClient, chains);
 
 export const Web3Configuration = (props: any) => {
+    try {
+        return (
+            <>
+                <WagmiConfig client={wagmiClient}>
+                    {props.children}
+                </WagmiConfig>
 
-    return (
-        <>
-            <WagmiConfig client={wagmiClient}>
-                {props.children}
-            </WagmiConfig>
-
-            <Web3Modal themeZIndex={1000000} themeMode="dark" projectId={projectId} ethereumClient={ethereumClient}/>
-        </>
-    )
+                <Web3Modal themeZIndex={1000000} themeMode="dark" projectId={projectId}
+                           ethereumClient={ethereumClient}/>
+            </>
+        )
+    } catch (e) {
+        return null;
+    }
 }

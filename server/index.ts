@@ -46,6 +46,7 @@ app.get('/', async (req, res) => {
             res.send({started: false, contractAddress: null, abi: null});
         }
     } catch (error) {
+        console.error(error);
         res.send({started: false, contractAddress: null, abi: null});
     }
 });
