@@ -12,7 +12,7 @@ export const Staking = () => {
     const showTokensLoading = !contractTokens && tokensPending;
 
     const renderTokens = useCallback(() => {
-        if (!showTokensLoading) {
+        if (!showTokensLoading && contractTokens) {
             let tokens;
             if (contractTokens.length > 0) {
                 tokens = contractTokens;

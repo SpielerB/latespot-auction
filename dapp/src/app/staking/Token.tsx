@@ -9,7 +9,6 @@ import {
     useTokenTransaction
 } from '../../store/contract/ContractReducer';
 import ContractToken from '../../model/ContractToken';
-import deadSquirrel from './deadSquirrel.png'
 import {PropsWithChildren, useCallback, useState} from 'react';
 import InfoDialog from '../InfoDialog';
 import {duration} from 'moment';
@@ -92,14 +91,14 @@ const RealToken = ({token}: { token: ContractToken }) => {
                     />;
             }
         }
-        let stakeText = "Stake Token";
+        let stakeText = "Stake";
         if (transaction?.pending) {
             stakeText = "Pending...";
         } else if (token.staked) {
             if (token.level > 0) {
-                stakeText = "Upgrade Token";
+                stakeText = "Unstake & Upgrade";
             } else {
-                stakeText = "Unstake Token";
+                stakeText = "Unstake";
             }
         }
 
@@ -120,7 +119,7 @@ const RealToken = ({token}: { token: ContractToken }) => {
             return (
                 <div>
                     <div className="mint-buy-h4">
-                        Time until you reach next level
+                        Time until you reach the next level:
                     </div>
                     <div>
                         {days} days {hours} hrs {minutes} mins {seconds} secs
@@ -293,7 +292,8 @@ const UnrevealedToken = () => {
     return (
         <div className="token">
             <div className="token-mark">Revealing soon...</div>
-            <img className="token-image" src={deadSquirrel} alt="Placeholder Squirrel"/>
+            <img className="token-image" src="https://prod.squirreldegens.com/deadSquirrel.png"
+                 alt="Placeholder Squirrel"/>
             <div className="token-control">
                 <button className="mint-button w-button token-stake-button" disabled>Stake</button>
             </div>
