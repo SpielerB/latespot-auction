@@ -1,7 +1,6 @@
 /// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.17;
 
-
 import "@openzeppelin/contracts-upgradeable/utils/math/MathUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
@@ -349,7 +348,6 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     */
     function withdraw() public onlyOwner {
         require(minted(), "Tokens have not been minted yet.");
-        require(revealed, "Tokens have not been revealed");
 
         uint256 balance = address(this).balance;
         require(balance > 0, "The contract contains no ETH to withdraw");
@@ -361,7 +359,6 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     */
     function withdrawLink() public onlyOwner {
         require(minted(), "Tokens have not been minted yet.");
-        require(revealed, "Tokens have not been revealed");
 
         LinkTokenInterface link = LinkTokenInterface(LINK);
         uint256 balance = link.balanceOf(address(this));
