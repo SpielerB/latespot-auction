@@ -53,7 +53,6 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     /*
         Auction
     */
-    CountersUpgradeable.Counter private _ticketCounter;
     address[] private _ticketHolders;
 
     bool public privateAuctionStarted;
