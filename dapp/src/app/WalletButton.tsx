@@ -79,8 +79,10 @@ const WalletButton = ({portalElement, mobile}: WalletButtonProps) => {
         case DisplayState.PRIVATE_AUCTION:
         case DisplayState.PRE_PUBLIC_AUCTION:
         case DisplayState.PUBLIC_AUCTION:
+        case DisplayState.PRE_MINT:
             button = <BuyTicketsButton mobile={mobile}/>;
             break;
+        case DisplayState.PRE_REVEAL:
         case DisplayState.STAKING:
             button = <StakeButton mobile={mobile}/>;
             break;
