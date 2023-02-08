@@ -186,16 +186,16 @@ const RealToken = ({token}: { token: ContractToken }) => {
                     <h3 className="mint-buy-h4">You are about to stake a token</h3>
                     <p>The staking process involves your token being transferred from your wallet to the contract.</p>
                     <p>
-                        This will cause the token to disappear from your wallet, it will still be accessible through the
+                        This will cause the token to disappear from your wallet; it will still be accessible through the
                         staking terminal.
                     </p>
-                    <p>Staking will cost a small amount of $ETH for gas fees, usually less than $1 USD.</p>
+                    <p>Staking will cost a small amount of $ETH for gas fees, usually less than $1.</p>
                 </div>
                 <div className="dialog-text">
                     <h3 className="mint-buy-h4">Staking may take a while</h3>
                     <p>The staking transaction may take a couple of minutes to finish.</p>
                     <p>
-                        Please be patient and wait for the token state to update on its own. No page refresh is
+                        Please be patient and wait for the token state to update itself. No page refresh is
                         required.
                     </p>
                 </div>
@@ -214,8 +214,8 @@ const RealToken = ({token}: { token: ContractToken }) => {
             >
                 <div className="dialog-text">
                     <h3 className="mint-buy-h4">You are about to unstake a token</h3>
-                    <p>This will return the token to your wallet and you will be able to trade the token.</p>
-                    <p>Unstaking will cost a small amount of $ETH for gas fees, usually less than $1 USD.</p>
+                    <p>This will return the token to your wallet, and you will be able to trade the token.</p>
+                    <p>Unstaking will cost a small amount of $ETH for gas fees, usually less than $1.</p>
                 </div>
                 <div className="dialog-text">
                     <h3 className="mint-buy-h4">Staking progress will be lost</h3>
@@ -252,18 +252,18 @@ const RealToken = ({token}: { token: ContractToken }) => {
                 <div className="dialog-text">
                     <h3 className="mint-buy-h4">You are about to upgrade a token</h3>
                     <p>This will return the token to your wallet and you will be able to trade the token.</p>
-                    <p>Unstaking will cost a small amount of $ETH for gas fees, usually less than $1 USD.</p>
+                    <p>Unstaking will cost a small amount of $ETH for gas fees, usually less than $1.</p>
                 </div>
                 <div className="dialog-text">
                     <h3 className="mint-buy-h4">Upgrading will lock token to current level</h3>
                     <p>Once the Squirrel has been upgraded, it may never be staked again.</p>
-                    <p>It will remain on the current level forever</p>
+                    <p>It will remain on the current level forever.</p>
                 </div>
                 <div className="dialog-text">
                     <h3 className="mint-buy-h4">Unstaking may take a while</h3>
                     <p>The unstaking transaction may take a couple of minutes to finish.</p>
                     <p>
-                        Please be patient and wait for the token state to update on its own. No page refresh is
+                        Please be patient and wait for the token state to update itself. No page refresh is
                         required.
                     </p>
                 </div>
@@ -280,7 +280,7 @@ const EmptyToken = () => {
             <img
                 className="token-image"
                 src="https://prod.squirreldegens.com/deadSquirrel.png"
-                alt="Placeholder squirrel"
+                alt="Placeholder Squirrel"
             />
             <div className="token-control">
                 <button className="mint-button w-button token-stake-button" disabled>Stake</button>
@@ -293,7 +293,7 @@ const UnrevealedToken = () => {
     return (
         <div className="token">
             <div className="token-mark">Revealing soon...</div>
-            <img className="token-image" src={deadSquirrel} alt="Placeholder squirrel"/>
+            <img className="token-image" src={deadSquirrel} alt="Placeholder Squirrel"/>
             <div className="token-control">
                 <button className="mint-button w-button token-stake-button" disabled>Stake</button>
             </div>

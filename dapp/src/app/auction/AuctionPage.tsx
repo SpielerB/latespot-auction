@@ -86,7 +86,7 @@ const MintSalesForm = (props: SalesProps) => {
         selectText = "MAXIMUM NUMBER OF TICKETS REACHED";
         isEligible = false;
     } else {
-        selectText = "SELECT AMOUNT (1 TICKET = 1 NFT)";
+        selectText = "SELECT AMOUNT (1 TICKET ≙ 1 NFT)";
         isEligible = true;
     }
 
@@ -171,7 +171,7 @@ const MintSalesForm = (props: SalesProps) => {
                 <div className="dialog-text">
                     <h3 className="mint-buy-h4">Tickets</h3>
                     <p>Please note that a ticket is not a token until it has been minted.
-                        We will mint all NFTs a maximum of 96 hours after the public sale has ended.</p>
+                        We will mint all NFTs no later than 96 hours after the public sale has ended. </p>
                 </div>
                 <div className="dialog-text">
                     <h3 className="mint-buy-h4">Gas Price</h3>
