@@ -39,7 +39,7 @@ export const updateContractModel = createAction<Contract | undefined>("contract/
 export const watchTransaction = createAsyncThunk<void, WatchTransaction, { state: RootState }>("contract/transaction/watch", async ({transaction}, thunkAPI) => {
     try {
         const tx = await transaction;
-        await tx.wait();
+        await tx.wait(2);
         if (!syncedContract) throw "Contract is not available";
         thunkAPI.dispatch(syncContract());
     } catch (error: any) {
