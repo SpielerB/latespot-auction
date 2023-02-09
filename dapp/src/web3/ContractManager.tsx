@@ -30,7 +30,7 @@ const ContractManager = () => {
                 }
             }
         }, []);
-    
+
     const account = useAccount({onConnect});
     const contract = useEtherContract();
     const localMetadata = useContractMetadata();
@@ -56,7 +56,7 @@ const ContractManager = () => {
                         }
                     }
                 } catch (error) {
-                    console.error(error);
+                    // Don't log, just continue
                 }
                 if (!cancelled) {
                     setTimeout(fetchContractData, 10000);
