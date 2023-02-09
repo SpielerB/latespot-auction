@@ -6,6 +6,7 @@ import morgan from 'morgan';
 import * as dotenv from 'dotenv';
 import {arrayify} from '@ethersproject/bytes'
 import {abi, address} from './contract/AuctionV2Upgradeable.json';
+import {clearInterval} from 'timers';
 
 const helmet = require("helmet");
 
@@ -32,10 +33,18 @@ app.use(cors()); // Allow cors
 app.use(morgan('combined')); // Log requests
 
 let started = false;
+setTimeout(async () => {
+    try {
+        // Initialize contract connection and set started value
+        started = await contract.privateAuctionStarted();
+    } catch (error) {
+        console.error("Error while initializing contract. Continuing with execution.");
+    }
+}, 0);
 
 app.get('/', async (req, res) => {
     try {
-        if (started || (started = await contract.privateAuctionStarted())) {
+        if (started) {
             const data = {
                 started: true,
                 contractAddress: address,
@@ -73,8 +82,40 @@ app.post('/sign', async (req, res) => {
     }
 });
 
-
 app.listen(port, async () => {
     // tslint:disable-next-line:no-console
     console.log(`listening on port ${port}`);
 });
+
+setTimeout(async () => {
+    // Wait for provider to avoid spamming the console with reconnects
+    await provider._waitUntilReady();
+    const intervalId = setInterval(async () => {
+        if (provider.ready) {
+            try {
+                console.info("Checking if contract is ready.");
+                started = await contract.privateAuctionStarted();
+                if (started) {
+                    console.info("Contract is ready. Stopping interval.");
+                    clearInterval(intervalId);
+                } else {
+                    console.info("Contract not ready yet.");
+                }
+            } catch (error: any) {
+                if (error?.code === "BAD_DATA") {
+                    console.error("Contract returned bad data.");
+                } else if (error?.code === "ECONNREFUSED") {
+                    console.error("Connection to provider failed");
+                } else {
+                    console.error("An error occurred while loading the contract ready state:", error);
+                }
+            }
+        }
+    }, 10000);
+
+    if (started) {
+        console.info("Contract is ready");
+        clearInterval(intervalId);
+    }
+
+}, 0);
