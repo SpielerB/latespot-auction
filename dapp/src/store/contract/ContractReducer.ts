@@ -41,7 +41,7 @@ export const watchTransaction = createAsyncThunk<void, WatchTransaction, { state
         const tx = await transaction;
         await tx.wait(2);
         if (!syncedContract) throw "Contract is not available";
-        thunkAPI.dispatch(syncContract());
+        await thunkAPI.dispatch(syncContract());
     } catch (error: any) {
         if (error.code !== "ACTION_REJECTED") {
             throw error;
