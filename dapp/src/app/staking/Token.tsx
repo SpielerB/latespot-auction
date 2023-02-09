@@ -200,7 +200,7 @@ const RealToken = ({token}: { token: ContractToken }) => {
                 </div>
             </InfoDialog>
             <InfoDialog
-                iconSrc="https://assets.website-files.com/621e34ea4b3095856cff1ff8/6226563ba9df1423307642dd_live-icon.svg"
+                iconSrc="https://prod.squirreldegens.com/warning.svg"
                 title="WARNING"
                 confirmLabel="Yes, I'm aware that I will lose my progress"
                 cancelLabel="No, I want to keep my staking progress"
@@ -237,7 +237,7 @@ const RealToken = ({token}: { token: ContractToken }) => {
                 </div>
             </InfoDialog>
             <InfoDialog
-                iconSrc="https://assets.website-files.com/621e34ea4b3095856cff1ff8/6226563ba9df1423307642dd_live-icon.svg"
+                iconSrc="https://prod.squirreldegens.com/warning.svg"
                 title="WARNING"
                 confirmLabel="Yes, I'm aware that I can't stake this Squirrel anymore after upgrading"
                 cancelLabel="No, I want to keep my staking progress"

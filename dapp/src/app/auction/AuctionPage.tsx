@@ -5,7 +5,6 @@ import {useAppDispatch} from "../../store/Store";
 import {BigNumber, ethers} from "ethers";
 import {useAddress} from "../../hooks/WalletHooks";
 import InfoDialog from "../InfoDialog";
-import warning from '../warning.svg'
 import Auction from "../../model/Auction";
 
 
@@ -195,7 +194,7 @@ const MintSalesForm = (props: SalesProps) => {
                 </div>
             </InfoDialog>
             <InfoDialog
-                iconSrc={warning}
+                iconSrc="https://prod.squirreldegens.com/warning.svg"
                 title="Error"
                 confirmLabel="Confirm"
                 open={showError}
