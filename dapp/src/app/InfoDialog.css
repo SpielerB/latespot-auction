@@ -50,14 +50,27 @@
     height: 2.2em;
 }
 
+@media only screen and (max-width: 450px) {
+    .dialog-icon {
+        margin: auto 0.5em;
+        height: 1.7em;
+    }
+    .dialog-h2 {
+        font-size: 2.2em;
+        font-weight: 500;
+        padding-bottom: 0.05em;
+        line-height: 1em;
+    }
+}
+
 .dialog-text {
     padding-bottom: 1.3em;
     margin-right: 0.5em;
 }
 
-.mint-link{
+.mint-link {
     text-decoration-line: underline;
-    text-decoration-color:  #0cffcf;
+    text-decoration-color: #0cffcf;
 }
 
 .dialog-buttons {
