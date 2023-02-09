@@ -44,6 +44,9 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     /*
         Staking
     */
+    event TokenStaked(address indexed _owner, uint256 indexed _token);
+    event TokenUnStaked(address indexed _owner, uint256 indexed _token);
+
     uint256[] private _definedStakeLevels;
     mapping(uint256 => address) private _stakeOwnerMap;
     mapping(uint256 => uint256) private _stakeLevelTimeMap;
@@ -54,6 +57,8 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     */
     address[] private _ticketHolders;
 
+    event PrivateAuctionStarted(uint256 _price, uint256 _supply, uint256 _ticketsPerWallet);
+
     bool public privateAuctionStarted;
     bool public privateAuctionStopped;
     uint256 public privateAuctionPrice;
@@ -61,6 +66,8 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     uint256 public privateAuctionTicketSupply;
     uint256 public privateAuctionTicketsPerWallet;
     mapping(address => uint256) public privateAuctionTicketMap;
+
+    event PublicAuctionStarted(uint256 _price, uint256 _supply, uint256 _ticketsPerWallet);
 
     bool public publicAuctionStarted;
     bool public publicAuctionStopped;
@@ -79,6 +86,8 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     /*
         Reveal
     */
+
+    event Revealed(string _uri, uint256 _seed);
 
     uint256 public revealVrfRequestId;
     bool public revealed;
@@ -142,6 +151,7 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
         privateAuctionTicketSupply = supply_;
         privateAuctionStarted = true;
         privateAuctionTicketsPerWallet = ticketsPerWallet_;
+        emit PrivateAuctionStarted(price_, supply_, ticketsPerWallet_);
     }
 
     /*
@@ -214,6 +224,7 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
         publicAuctionPrice = price_;
         publicAuctionTicketSupply = supply_;
         publicAuctionTicketsPerWallet = ticketsPerWallet_;
+        emit PublicAuctionStarted(price_, supply_, ticketsPerWallet_);
     }
 
     /*
@@ -341,6 +352,7 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     function fulfillRandomWords(uint256, uint256[] memory randomWords) internal override {
         seed = randomWords[0];
         revealed = true;
+        emit Revealed(__realURI, seed);
     }
 
     /*
@@ -381,6 +393,8 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
         _stakeStartTimeMap[tokenId_] = block.timestamp;
 
         transferFrom(_msgSender(), address(this), tokenId_);
+
+        emit TokenStaked(_msgSender(), tokenId_);
     }
 
     /*
@@ -425,6 +439,7 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
         delete _stakeOwnerMap[tokenId_];
 
         _transfer(address(this), _msgSender(), tokenId_);
+        emit TokenUnStaked(_msgSender(), tokenId_);
     }
 
     /*
