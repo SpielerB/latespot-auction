@@ -62,7 +62,7 @@ export const Staking = () => {
                 <h2 className="staking-title">IMPORTANT STAKING INFORMATION</h2>
                 <ul>
                     <li>
-                        <h3 className="mint-buy-h4">There are 3 staking levels:</h3>
+                        <h3 className="mint-staking-h3">There are 3 staking levels:</h3>
                         <ol>
                             <li>Bronze Pass (30 days)</li>
                             <li>Silver Pass (60 days)</li>
@@ -73,7 +73,7 @@ export const Staking = () => {
                     </span>
                     </li>
                     <li>
-                        <h3 className="mint-buy-h4">A Squirrel may only be upgraded once!</h3>
+                        <h3 className="mint-staking-h3">A Squirrel may only be upgraded once!</h3>
                         <div>
                             As soon as the first level (Bronze) has been reached, the NFT will automatically be upgraded
                             if it gets unstaked.
@@ -85,7 +85,7 @@ export const Staking = () => {
                         </div>
                     </li>
                     <li>
-                        <h3 className="mint-buy-h4">Contract data</h3>
+                        <h3 className="mint-staking-h3">Contract data</h3>
                         <div>
                             You do not have to reload the page to get the current contract data, such as your tokens.
                         </div>
@@ -94,7 +94,7 @@ export const Staking = () => {
                         </div>
                     </li>
                     <li>
-                        <h3 className="mint-buy-h4">Staking and unstaking may take a while</h3>
+                        <h3 className="mint-staking-h3">Staking and unstaking may take a while</h3>
                         <div>
                             The process of staking or unstaking the NFT may take a while, depending on the current
                             network congestion and your selected gas price.

@@ -108,7 +108,7 @@ const RealToken = ({token}: { token: ContractToken }) => {
             const level = token.level;
             const nextTime = level >= 3 ? 0 : contractModel?.stakingLevels[level] ?? 0;
             const remainingTime = nextTime - time;
-            if (level === 3 || remainingTime < 0) return <span>Max level reached<br/><br/></span>;
+            if (level === 3 || remainingTime < 0) return <span>Max. level reached<br/><br/></span>;
             const future = duration().add(remainingTime, "seconds");
 
             const days = future.asDays().toFixed(0);
@@ -118,7 +118,7 @@ const RealToken = ({token}: { token: ContractToken }) => {
 
             return (
                 <div>
-                    <div className="mint-buy-h4">
+                    <div className="mint-token-h3">
                         Time until you reach the next level:
                     </div>
                     <div>
@@ -182,7 +182,7 @@ const RealToken = ({token}: { token: ContractToken }) => {
                 }}
             >
                 <div className="dialog-text">
-                    <h3 className="mint-buy-h4">You are about to stake a token</h3>
+                    <h3 className="mint-token-h3">You are about to stake a token</h3>
                     <p>The staking process involves your token being transferred from your wallet to the contract.</p>
                     <p>
                         This will cause the token to disappear from your wallet; it will still be accessible through the
@@ -191,7 +191,7 @@ const RealToken = ({token}: { token: ContractToken }) => {
                     <p>Staking will cost a small amount of $ETH for gas fees, usually less than $1.</p>
                 </div>
                 <div className="dialog-text">
-                    <h3 className="mint-buy-h4">Staking may take a while</h3>
+                    <h3 className="mint-token-h3">Staking may take a while</h3>
                     <p>The staking transaction may take a couple of minutes to finish.</p>
                     <p>
                         Please be patient and wait for the token state to update itself. No page refresh is
@@ -212,19 +212,19 @@ const RealToken = ({token}: { token: ContractToken }) => {
                 }}
             >
                 <div className="dialog-text">
-                    <h3 className="mint-buy-h4">You are about to unstake a token</h3>
+                    <h3 className="mint-token-h3">You are about to unstake a token</h3>
                     <p>This will return the token to your wallet, and you will be able to trade the token.</p>
                     <p>Unstaking will cost a small amount of $ETH for gas fees, usually less than $1.</p>
                 </div>
                 <div className="dialog-text">
-                    <h3 className="mint-buy-h4">Staking progress will be lost</h3>
+                    <h3 className="mint-token-h3">Staking progress will be lost</h3>
                     <p>
                         All staking progress up to this point will be lost and you will have to start over when staking
                         the token again.
                     </p>
                 </div>
                 <div className="dialog-text">
-                    <h3 className="mint-buy-h4">Unstaking may take a while</h3>
+                    <h3 className="mint-token-h3">Unstaking may take a while</h3>
                     <p>The unstaking transaction may take a couple of minutes to finish.</p>
                     <p>
                         Please be patient and wait for the token state to update on its own. No page refresh is
@@ -233,7 +233,7 @@ const RealToken = ({token}: { token: ContractToken }) => {
                 </div>
 
                 <div className="dialog-text">
-                    <h3 className="mint-buy-h4">Are you sure you want to unstake your Squirrel?</h3>
+                    <h3 className="mint-token-h3">Are you sure you want to unstake your Squirrel?</h3>
                 </div>
             </InfoDialog>
             <InfoDialog
@@ -249,24 +249,24 @@ const RealToken = ({token}: { token: ContractToken }) => {
                 }}
             >
                 <div className="dialog-text">
-                    <h3 className="mint-buy-h4">You are about to upgrade a token</h3>
+                    <h3 className="mint-token-h3">You are about to upgrade a token</h3>
                     <p>This will return the token to your wallet and you will be able to trade the token.</p>
                     <p>Unstaking will cost a small amount of $ETH for gas fees, usually less than $1.</p>
                 </div>
                 <div className="dialog-text">
-                    <h3 className="mint-buy-h4">Upgrading will lock token to current level</h3>
+                    <h3 className="mint-token-h3">Upgrading will lock token to current level</h3>
                     <p>Once the Squirrel has been upgraded, it may never be staked again.</p>
                     <p>It will remain on the current level forever.</p>
                 </div>
                 <div className="dialog-text">
-                    <h3 className="mint-buy-h4">Unstaking may take a while</h3>
+                    <h3 className="mint-token-h3">Unstaking may take a while</h3>
                     <p>The unstaking transaction may take a couple of minutes to finish.</p>
                     <p>
                         Please be patient and wait for the token state to update itself. No page refresh is
                         required.
                     </p>
                 </div>
-                <h3 className="mint-buy-h4">Are you sure you want to upgrade your Squirrel?</h3>
+                <h3 className="mint-token-h3">Are you sure you want to upgrade your Squirrel?</h3>
             </InfoDialog>
         </div>
     )

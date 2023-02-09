@@ -22,7 +22,7 @@
 .staked .token-mark, .upgraded .token-mark {
     background-color: #FFF;
     color: black;
-    border: 1px solid #0cffcf;
+    border: 2px solid #0cffcf;
 }
 
 .token.staked {
@@ -180,4 +180,8 @@
     100% {
         transform: rotate(360deg);
     }
+}
+
+.mint-token-h3 {
+    color: #0cffcf;
 }
