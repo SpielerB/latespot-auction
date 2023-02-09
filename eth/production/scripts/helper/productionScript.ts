@@ -1,6 +1,8 @@
 import {config} from 'dotenv';
 import * as path from 'path';
-import {Contract, ContractTransaction} from 'ethers';
+import {Contract, ContractTransaction, Wallet} from 'ethers';
+import {ethers} from 'hardhat';
+import {abi} from '../../../artifacts/contracts/AuctionV2Upgradeable.sol/AuctionV2Upgradeable.json'
 
 config({
     path: path.resolve(process.cwd(), "eth/production/.env.production"),
@@ -13,11 +15,12 @@ export const waitFor = async (transactionPromise: Promise<ContractTransaction>) 
 
 export const ensureEnv = (key: string): string => {
     const value = process.env[key];
-    if (value === undefined) throw `Environment variable '${key}' is not defined`;
+    if (value === undefined || value === "") throw `Environment variable '${key}' is not defined`;
     return value;
 }
 
-let contractInstance: Contract | undefined;
-export const contract = () => {
-
+export const createContract = () => {
+    const ownerWallet = new Wallet(ensureEnv("CONTRACT_OWNER_PRIVATE_KEY"), ethers.provider);
+    const address = ensureEnv("CONTRACT_PROXY_ADDRESS");
+    return new Contract(address, abi, ownerWallet);
 }

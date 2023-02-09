@@ -5,8 +5,8 @@ import {ensureEnv} from './helper/productionScript';
 import {ethers, run, upgrades} from 'hardhat';
 
 async function main() {
-    const ownerWallet = new Wallet(process.env.CONTRACT_OWNER_PRIVATE_KEY as string, ethers.provider);
-    const signerWallet = new Wallet(process.env.CONTRACT_SIGNER_PRIVATE_KEY as string, ethers.provider);
+    const ownerWallet = new Wallet(ensureEnv("CONTRACT_OWNER_PRIVATE_KEY"), ethers.provider);
+    const signerWallet = new Wallet(ensureEnv("CONTRACT_SIGNER_PRIVATE_KEY"), ethers.provider);
     const parameters = {
         tokenName: ensureEnv("CONTRACT_PARAMETER_TOKEN_NAME"),
         tokenSymbol: ensureEnv("CONTRACT_PARAMETER_TOKEN_SYMBOL"),
