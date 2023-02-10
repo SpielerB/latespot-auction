@@ -108,6 +108,10 @@
     animation: rotation 2s linear infinite;
 }
 
+.mint-token-h3 {
+    color: #0cffcf;
+}
+
 @media only screen and (max-width: 750px) {
     .token {
         margin: 0 16px 32px;
@@ -180,8 +184,4 @@
     100% {
         transform: rotate(360deg);
     }
-}
-
-.mint-token-h3 {
-    color: #0cffcf;
 }
