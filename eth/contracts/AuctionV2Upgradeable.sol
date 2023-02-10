@@ -104,6 +104,13 @@ contract AuctionV2Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     }
 
     /*
+    * Returns the contract URI for the contract level metadata
+    */
+    function contractURI() public view returns (string memory) {
+        return _contractURI;
+    }
+
+    /*
     * The total supply consisting of the premint + private auction + public auction tickets
     */
     function totalSupply() public view returns (uint256) {
