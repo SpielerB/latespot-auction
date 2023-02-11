@@ -5,7 +5,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import * as dotenv from 'dotenv';
 import {arrayify} from '@ethersproject/bytes'
-import {abi, address} from './contract/AuctionV2Upgradeable.json';
+import {abi, address} from './contract/AuctionV3Upgradeable.json';
 
 const helmet = require("helmet");
 
@@ -31,20 +31,56 @@ app.use(bodyParser.json());
 app.use(cors()); // Allow cors
 app.use(morgan('combined')); // Log requests
 
-let auctionState: "NONE" | "PRIVATE" | "PRE_PUBLIC" | "PUBLIC" | "FINISHED" = "NONE";
+let mintPhase: "NONE" | "PRIVATE" | "PRE_PUBLIC" | "PUBLIC" | "FINISHED" = "NONE";
 
+
+const syncContract = async () => {
+    try {
+        console.info("Checking mint state.");
+        const privateMintStarted = await contract.privateMintStarted();
+        if (privateMintStarted) {
+            let updatedMintPhase: typeof mintPhase = "PRIVATE";
+            if (await contract.privateMintStopped()) {
+                updatedMintPhase = "PRE_PUBLIC";
+            }
+            if (await contract.publicMintStarted()) {
+                updatedMintPhase = "PUBLIC";
+            }
+            if (await contract.publicMintStopped()) {
+                updatedMintPhase = "FINISHED";
+            }
+            if (mintPhase !== updatedMintPhase) {
+                console.info("Mint state changed:", updatedMintPhase);
+            }
+            mintPhase = updatedMintPhase;
+        } else {
+            console.info("Mint not ready yet.");
+        }
+    } catch (error: any) {
+        if (error?.code === "BAD_DATA") {
+            console.error("Contract returned bad data.");
+        } else if (error?.code === "ECONNREFUSED") {
+            console.error("Connection to provider failed");
+        } else {
+            console.error("An error occurred while loading the contract ready state:", error);
+        }
+    }
+    setTimeout(syncContract, 10000);
+}
 
 setTimeout(async () => {
     try {
         // Initialize contract connection
-        await contract.privateAuctionStarted();
+        await contract.privateMintStarted();
     } catch (error) {
         console.error("Error while initializing contract. Continuing with execution.");
     }
+    await syncContract();
 }, 0);
+
 app.get('/', async (req, res) => {
     try {
-        if (auctionState !== "NONE") {
+        if (mintPhase !== "NONE") {
             const data = {
                 started: true,
                 contractAddress: address,
@@ -65,14 +101,14 @@ app.post('/sign', async (req, res) => {
         const {value, address} = req.body;
         console.log(`Signing request for ${address}@${value}`)
 
-        if (auctionState !== "PUBLIC" && auctionState !== "PRIVATE") {
+        if (mintPhase !== "PUBLIC" && mintPhase !== "PRIVATE") {
             console.error("No auction active");
             res.sendStatus(400);
             return;
         }
 
-        const auctionPhase = auctionState.toLowerCase();
-        const payload = AbiCoder.defaultAbiCoder().encode(['address', 'uint256', 'string'], [address, value, auctionPhase]);
+        const currentMintPhase = mintPhase.toLowerCase();
+        const payload = AbiCoder.defaultAbiCoder().encode(['address', 'uint256', 'string'], [address, value, currentMintPhase]);
         const hash = keccak256(payload);
         const signature = await signer.signMessage(arrayify(hash));
         res.send(signature);
@@ -86,45 +122,3 @@ app.listen(port, async () => {
     // tslint:disable-next-line:no-console
     console.log(`listening on port ${port}`);
 });
-
-setTimeout(async () => {
-    // Wait for provider to avoid spamming the console with reconnects
-    await provider._waitUntilReady();
-    setInterval(async () => {
-        if (provider.ready) {
-            try {
-                console.info("Checking auction state.");
-                const privateAuctionStarted = await contract.privateAuctionStarted();
-                if (privateAuctionStarted) {
-                    let updatedAuctionState: typeof auctionState = "PRIVATE";
-                    if (await contract.publicAuctionStopped()) {
-                        updatedAuctionState = "PRE_PUBLIC";
-                    }
-                    if (await contract.publicAuctionStarted()) {
-                        updatedAuctionState = "PUBLIC";
-                    }
-                    if (await contract.publicAuctionStopped()) {
-                        updatedAuctionState = "FINISHED";
-                    }
-                    if (auctionState !== updatedAuctionState) {
-                        console.info("Contract state changed:", updatedAuctionState);
-                    }
-                    auctionState = updatedAuctionState;
-                } else {
-                    console.info("Contract not ready yet.");
-                }
-            } catch (error: any) {
-                if (error?.code === "BAD_DATA") {
-                    console.error("Contract returned bad data.");
-                } else if (error?.code === "ECONNREFUSED") {
-                    console.error("Connection to provider failed");
-                } else {
-                    console.error("An error occurred while loading the contract ready state:", error);
-                }
-            }
-        } else {
-            console.info("Provider not ready");
-        }
-    }, 10000);
-
-}, 0);
