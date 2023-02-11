@@ -5,6 +5,11 @@ const rl = createInterface({
     output: process.stdout
 });
 
-const question = (questionText: string) => new Promise<string>(resolve => rl.question(questionText, resolve));
+export const question = (questionText: string) => new Promise<string>(resolve => rl.question(questionText, resolve));
 
-export default question;
+export const confirmation = async (message: string) => {
+    console.info(message);
+    console.info("Write 'YES' if you want to continue:");
+    const response = await question("> ");
+    if (response !== "YES") throw "Confirmation rejected by user.";
+}

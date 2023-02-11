@@ -1,7 +1,8 @@
 import "./helper/productionScript"
-import question from './helper/question';
+import {question} from './helper/question';
 import {Wallet} from 'ethers';
 import {ensureEnv} from './helper/productionScript';
+// @ts-ignore
 import {ethers, run, upgrades} from 'hardhat';
 
 async function main() {

@@ -1,6 +1,6 @@
 import "./helper/productionScript"
 import {createContract, ensureEnv} from './helper/productionScript';
-import question from './helper/question';
+import {question} from './helper/question';
 
 async function main() {
     const contract = createContract();

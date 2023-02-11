@@ -1,6 +1,7 @@
 import {config} from 'dotenv';
 import * as path from 'path';
 import {Contract, ContractTransaction, Wallet} from 'ethers';
+// @ts-ignore
 import {ethers} from 'hardhat';
 import {abi} from '../../../artifacts/contracts/AuctionV2Upgradeable.sol/AuctionV2Upgradeable.json'
 
@@ -20,7 +21,11 @@ export const ensureEnv = (key: string): string => {
 }
 
 export const createContract = () => {
-    const ownerWallet = new Wallet(ensureEnv("CONTRACT_OWNER_PRIVATE_KEY"), ethers.provider);
+    const ownerWallet = getOwner();
     const address = ensureEnv("CONTRACT_PROXY_ADDRESS");
     return new Contract(address, abi, ownerWallet);
+}
+
+export const getOwner = () => {
+    return new Wallet(ensureEnv("CONTRACT_OWNER_PRIVATE_KEY"), ethers.provider);
 }
