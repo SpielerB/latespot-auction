@@ -1,29 +1,29 @@
 import React, {useEffect, useState} from 'react';
 import "./AuctionPage.css"
-import {buyTickets, useBuyTransaction, useContractModel,} from "../../store/contract/ContractReducer";
+import {mint, useBuyTransaction, useContractModel,} from "../../store/contract/ContractReducer";
 import {useAppDispatch} from "../../store/Store";
 import {BigNumber, ethers} from "ethers";
 import {useAddress} from "../../hooks/WalletHooks";
 import InfoDialog from "../InfoDialog";
-import Auction from "../../model/Auction";
+import Mint from "../../model/Mint";
 
 
 interface AuctionProps {
     phase: number;
-    auction?: Auction;
+    auction?: Mint;
     title: String;
 }
 
 interface SalesProps {
-    auction?: Auction;
+    auction?: Mint;
 }
 
 const MintHeader = (props: AuctionProps) => {
     const contractModel = useContractModel();
-    const ticketsInWallet = contractModel?.walletTickets ?? 0;
+    const ticketsInWallet = contractModel?.mintedTokens ?? 0;
 
-    const ticketsSold = props.auction?.ticketsSold ?? 0;
-    const ticketSupply = props.auction?.ticketSupply ?? 0;
+    const ticketsSold = props.auction?.tokensMinted ?? 0;
+    const ticketSupply = props.auction?.tokenSupply ?? 0;
     const ticketStock = ticketSupply - ticketsSold;
     const stockString = ticketStock.toLocaleString('de-CH');
 
@@ -67,10 +67,10 @@ const MintSalesForm = (props: SalesProps) => {
         maximumFractionDigits: 3
     });
 
-    const isWhitelisted = contractModel?.whitelisted || contractModel?.publicAuction.hasStarted;
+    const isWhitelisted = contractModel?.whitelisted || contractModel?.publicMint.hasStarted;
     const hasStopped = props.auction?.hasStopped ?? false;
-    const maxTicketsPerWallet = props.auction?.ticketLimit ?? 0;
-    const ticketCount = props.auction?.walletTickets ?? 0;
+    const maxTicketsPerWallet = props.auction?.tokenLimit ?? 0;
+    const ticketCount = props.auction?.walletTokens ?? 0;
     const maxTickets = maxTicketsPerWallet - ticketCount;
 
     let isEligible;
@@ -158,7 +158,7 @@ const MintSalesForm = (props: SalesProps) => {
                 open={showInfo}
                 cancelLabel="Cancel purchase"
                 onConfirm={() => {
-                    dispatch(buyTickets(amount))
+                    dispatch(mint(amount))
                     setShowInfo(false)
                 }}
                 onCancel={() => setShowInfo(false)}

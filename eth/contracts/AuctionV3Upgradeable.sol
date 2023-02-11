@@ -347,6 +347,20 @@ contract AuctionV3Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     }
 
     /*
+    * Returns the total of tokens minted by the sender wallet
+    */
+    function mintedTokenCount() public view returns (uint256) {
+        return privateMintTokens() + publicMintTokens();
+    }
+
+    /*
+    * Returns the total of tokens minted by the given wallet
+    */
+    function mintedTokenCountOf(address wallet) public view onlyOwner returns (uint256) {
+        return privateMintTokensOf(wallet) + publicMintTokensOf(wallet);
+    }
+
+    /*
     * Mint a specific amount of tokens. The tokens will be minted on the owners wallet.
     * Can be used to activate the collection on a marketplace, like OpenSeas.
     */

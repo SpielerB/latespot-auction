@@ -76,10 +76,10 @@ const WalletButton = ({portalElement, mobile}: WalletButtonProps) => {
     // Disable inspection for this because the other application states are not initially known
     // noinspection JSUnreachableSwitchBranches
     switch (applicationState) {
-        case DisplayState.PRIVATE_AUCTION:
-        case DisplayState.PRE_PUBLIC_AUCTION:
-        case DisplayState.PUBLIC_AUCTION:
-        case DisplayState.PRE_MINT:
+        case DisplayState.PRIVATE_MINT:
+        case DisplayState.PRE_PUBLIC_MINT:
+        case DisplayState.PUBLIC_MINT:
+        case DisplayState.OBSOLETE:
             button = <BuyTicketsButton mobile={mobile}/>;
             break;
         case DisplayState.PRE_REVEAL:

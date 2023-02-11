@@ -51,7 +51,9 @@ export const watchTransaction = createAsyncThunk<void, WatchTransaction, { state
 
 export const syncContract = createAsyncThunk<Contract | undefined, void, { state: RootState }>("contract/model/sync", async (ignore, thunkAPI) => {
     if (!syncedContract) return undefined;
-    if (!thunkAPI.getState().contract.rawTokensSyncPending) {
+    const state = thunkAPI.getState();
+    const {displayState} = state.application;
+    if (state.contract.rawTokensSyncPending && displayState === DisplayState.STAKING || displayState === DisplayState.PRE_REVEAL) {
         thunkAPI.dispatch(syncRawTokens());
     }
     const contract = syncedContract;
@@ -63,20 +65,17 @@ export const syncContract = createAsyncThunk<Contract | undefined, void, { state
     if (!deepEqual(updatedContractModel, existingContractModel)) {
         thunkAPI.dispatch(updateContractModel(updatedContractModel));
         const currentApplicationState = thunkAPI.getState().application.displayState;
-        let applicationState = DisplayState.PRE_AUCTION;
-        if (updatedContractModel.privateAuction.hasStarted) {
-            applicationState = DisplayState.PRIVATE_AUCTION;
+        let applicationState = DisplayState.PRE_MINT;
+        if (updatedContractModel.privateMint.hasStarted) {
+            applicationState = DisplayState.PRIVATE_MINT;
         }
-        if (updatedContractModel.privateAuction.hasStarted && !updatedContractModel.privateAuction.isActive) {
-            applicationState = DisplayState.PRE_PUBLIC_AUCTION;
+        if (updatedContractModel.privateMint.hasStarted && !updatedContractModel.privateMint.isActive) {
+            applicationState = DisplayState.PRE_PUBLIC_MINT;
         }
-        if (updatedContractModel.privateAuction.hasStarted && updatedContractModel.publicAuction.hasStarted) {
-            applicationState = DisplayState.PUBLIC_AUCTION;
+        if (updatedContractModel.privateMint.hasStarted && updatedContractModel.publicMint.hasStarted) {
+            applicationState = DisplayState.PUBLIC_MINT;
         }
-        if (updatedContractModel.publicAuction.hasStarted && !updatedContractModel.publicAuction.isActive) {
-            applicationState = DisplayState.PRE_MINT;
-        }
-        if (updatedContractModel.tokensMinted) {
+        if (updatedContractModel.publicMint.hasStarted && !updatedContractModel.publicMint.isActive) {
             applicationState = DisplayState.PRE_REVEAL;
         }
         if (updatedContractModel.tokensRevealed) {
@@ -123,20 +122,20 @@ export const unStake = createAsyncThunk<void, ContractToken, { state: RootState 
 
 });
 
-export const buyTickets = createAsyncThunk<void, number, { state: RootState }>("contract/function/buy", async (ticketCount, thunkAPI) => {
+export const mint = createAsyncThunk<void, number, { state: RootState }>("contract/function/mint", async (tokenCount, thunkAPI) => {
     if (!syncedContract) throw "No contract available. Please try again later.";
-    if (ticketCount <= 0) throw "You must buy at least one ticket";
+    if (tokenCount <= 0) throw "You must buy at least one token";
     const model = thunkAPI.getState().contract.contractModel;
     if (!model) throw "Local contract model is empty. Please try again later.";
 
-    const isPrivateAuctionActive = model.privateAuction.isActive;
-    const isPublicAuctionActive = model.publicAuction.isActive;
+    const isPrivateMintActive = model.privateMint.isActive;
+    const isPublicMintActive = model.publicMint.isActive;
 
-    if (!isPublicAuctionActive && !isPrivateAuctionActive) throw "No active auction.";
-    if (isPrivateAuctionActive && !model.whitelisted) throw "Current wallet not whitelisted";
+    if (!isPublicMintActive && !isPrivateMintActive) throw "No active mint.";
+    if (isPrivateMintActive && !model.whitelisted) throw "Current wallet not whitelisted";
 
-    const price = BigNumber.from(isPrivateAuctionActive ? model.privateAuction.price : model.publicAuction.price);
-    const value = price.mul(ticketCount);
+    const price = BigNumber.from(isPrivateMintActive ? model.privateMint.price : model.publicMint.price);
+    const value = price.mul(tokenCount);
     const address = await syncedContract.signer.getAddress();
 
     const response = await fetch(`${import.meta.env.VITE_API_URL}/sign`, {
@@ -151,10 +150,10 @@ export const buyTickets = createAsyncThunk<void, number, { state: RootState }>("
 
     const signature = await response.text()
     let transactionPromise;
-    if (isPrivateAuctionActive) {
-        transactionPromise = syncedContract.buyPrivateAuction(signature, {value});
+    if (isPrivateMintActive) {
+        transactionPromise = syncedContract.privateMint(signature, {value});
     } else {
-        transactionPromise = syncedContract.buyPublicAuction(signature, {value});
+        transactionPromise = syncedContract.publicMint(signature, {value});
     }
     thunkAPI.dispatch(watchTransaction({transaction: transactionPromise, type: "buy"}))
 })
@@ -178,7 +177,7 @@ export const updateContractSyncLoop = createAsyncThunk<void, EthersContract | un
             console.error("Error while fetching contract model", e)
         }
         if (syncedContract === contract) {
-            setTimeout(syncContractLoop, 10000);
+            setTimeout(syncContractLoop, 5000);
         }
 
     };
@@ -224,29 +223,29 @@ const syncTokenMetadata = createAsyncThunk<TokenMetadata, ContractToken, { state
 
 const internalContractSync = async (contract: EthersContract): Promise<Contract> => {
     return {
-        privateAuction: {
-            hasStarted: await contract.privateAuctionStarted(),
-            isActive: await contract.privateAuctionActive(),
-            hasStopped: await contract.privateAuctionStopped(),
-            walletTickets: (await contract.privateAuctionTickets()).toNumber(),
-            ticketsSold: (await contract.privateAuctionTicketCount()).toNumber(),
-            ticketSupply: (await contract.privateAuctionTicketSupply()).toNumber(),
-            ticketLimit: (await contract.privateAuctionTicketsPerWallet()).toNumber(),
-            price: (await contract.privateAuctionPrice()).toString()
+        privateMint: {
+            hasStarted: await contract.privateMintStarted(),
+            isActive: await contract.privateMintActive(),
+            hasStopped: await contract.privateMintStopped(),
+            walletTokens: (await contract.privateMintTokens()).toNumber(),
+            tokensMinted: (await contract.privateMintTokenCount()).toNumber(),
+            tokenSupply: (await contract.privateMintSupply()).toNumber(),
+            tokenLimit: (await contract.privateMintTokensPerWallet()).toNumber(),
+            price: (await contract.privateMintPrice()).toString()
         },
-        publicAuction: {
-            hasStarted: await contract.publicAuctionStarted(),
-            isActive: await contract.publicAuctionActive(),
-            hasStopped: await contract.publicAuctionStopped(),
-            walletTickets: (await contract.publicAuctionTickets()).toNumber(),
-            ticketsSold: (await contract.publicAuctionTicketCount()).toNumber(),
-            ticketSupply: (await contract.publicAuctionTicketSupply()).toNumber(),
-            ticketLimit: (await contract.publicAuctionTicketsPerWallet()).toNumber(),
-            price: (await contract.publicAuctionPrice()).toString()
+        publicMint: {
+            hasStarted: await contract.publicMintStarted(),
+            isActive: await contract.publicMintActive(),
+            hasStopped: await contract.publicMintStopped(),
+            walletTokens: (await contract.publicMintTokens()).toNumber(),
+            tokensMinted: (await contract.publicMintTokenCount()).toNumber(),
+            tokenSupply: (await contract.publicMintSupply()).toNumber(),
+            tokenLimit: (await contract.publicMintTokensPerWallet()).toNumber(),
+            price: (await contract.publicMintPrice()).toString()
         },
-        tokensMinted: await contract.minted(),
         tokensRevealed: await contract.revealed(),
-        walletTickets: (await contract.tickets()).toNumber(),
+        mintedTokens: (await contract.mintedTokenCount()).toNumber(),
+        balance: (await contract.balanceOf(await contract.signer.getAddress())).toNumber(),
         whitelisted: await contract.whitelisted(),
         stakingLevels: (await contract.stakeLevels()).map((level: BigNumber) => level.toNumber())
     };

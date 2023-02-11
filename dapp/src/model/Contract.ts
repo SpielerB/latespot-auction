@@ -1,11 +1,11 @@
-import Auction from './Auction';
+import Mint from './Mint';
 
 export default interface Contract {
-    privateAuction: Auction;
-    publicAuction: Auction;
-    tokensMinted: boolean;
+    privateMint: Mint;
+    publicMint: Mint;
     tokensRevealed: boolean;
-    walletTickets: number;
+    mintedTokens: number;
+    balance: number;
     stakingLevels: number[]
     whitelisted: boolean;
 }

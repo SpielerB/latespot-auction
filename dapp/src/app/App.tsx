@@ -19,28 +19,28 @@ const ModalContent = () => {
     const contractModel = useContractModel();
 
     switch (displayState) {
-        case DisplayState.PRIVATE_AUCTION:
+        case DisplayState.PRIVATE_MINT:
             return <AuctionPage
                 phase={1}
-                auction={contractModel?.privateAuction}
+                auction={contractModel?.privateMint}
                 title="Whitelist sale"
             />;
-        case DisplayState.PRE_PUBLIC_AUCTION:
+        case DisplayState.PRE_PUBLIC_MINT:
             return <AuctionPage
                 phase={1}
-                auction={contractModel?.privateAuction}
+                auction={contractModel?.privateMint}
                 title="Whitelist sold out!"
             />;
-        case DisplayState.PUBLIC_AUCTION:
+        case DisplayState.PUBLIC_MINT:
             return <AuctionPage
                 phase={2}
-                auction={contractModel?.publicAuction}
+                auction={contractModel?.publicMint}
                 title="Public sale"
             />;
-        case DisplayState.PRE_MINT:
+        case DisplayState.OBSOLETE:
             return <AuctionPage
                 phase={2}
-                auction={contractModel?.publicAuction}
+                auction={contractModel?.publicMint}
                 title="We are sold out!"
             />;
         case DisplayState.PRE_REVEAL:

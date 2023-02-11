@@ -52,7 +52,7 @@ const ContractManager = () => {
                     if (!deepEqual(remoteMetadata, localMetadata)) {
                         dispatch(updateContractMetadata(remoteMetadata));
                         if (localMetadata.started && !remoteMetadata.started) {
-                            dispatch(setContractState(DisplayState.PRE_AUCTION));
+                            dispatch(setContractState(DisplayState.PRE_MINT));
                         }
                     }
                 } catch (error) {
@@ -76,7 +76,7 @@ const ContractManager = () => {
             dispatch(setContractState(DisplayState.DISCONNECTED));
         }
         if (account.isConnected && !account.isReconnecting && contractState === DisplayState.DISCONNECTED) {
-            dispatch(setContractState(DisplayState.PRE_AUCTION));
+            dispatch(setContractState(DisplayState.PRE_MINT));
         }
     }, [account, contractState])
 
