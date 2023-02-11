@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import {Contract, Wallet} from 'ethers';
 import {ethers} from 'hardhat';
-import {abi, address} from './contract/AuctionV2Upgradeable.json'
+import {abi, address} from './contract/AuctionV3Upgradeable.json'
 import crypto from 'crypto';
 import fetch from 'node-fetch';
 import {createSignature, setBalance} from '../test/helper';
@@ -37,71 +37,47 @@ async function main() {
         console.info(`Whitelisting 1000 wallets costs ${gasCostTotal} ETH or ${busdCostTotal} BUSD. This results in a single whitelist costing ${gasCostPerWhitelist} ETH or ${busdCostPerWhitelist} BUSD`)
     }
 
+    const privateMintPrice = ethers.utils.parseEther('0.0001');
     {
-        console.info("Checking price for de-whitelisting 1000 wallets");
-        const tx = await (await contract.unWhitelist(wallets.map(w => w.address))).wait();
-        const gasCostTotal = ethers.utils.formatEther(tx.gasUsed.mul(gasPrice));
-        const gasCostPerUnWhitelist = +gasCostTotal / 1000;
-        const busdCostTotal = +gasCostTotal * busdPrice;
-        const busdCostPerUnWhitelist = gasCostPerUnWhitelist * busdPrice;
-        console.info(`de whitelisting 1000 wallets costs ${gasCostTotal} ETH or ${busdCostTotal} BUSD. This results in a single whitelist costing ${gasCostPerUnWhitelist} ETH or ${busdCostPerUnWhitelist} BUSD`)
-    }
+        console.info("Checking Price for starting private mint");
 
-    console.info("Re-whitelisting contracts for further checks")
-    await contract.whitelist(wallets.map(wallet => wallet.address));
-
-    const privateAuctionPrice = ethers.utils.parseEther('0.0001');
-    {
-        console.info("Checking Price for starting private auction");
-
-        const tx = await (await contract.startPrivateAuction(privateAuctionPrice, 1000, 1000)).wait();
+        const tx = await (await contract.startPrivateMint(privateMintPrice, 1000, 1000)).wait();
         const gasCostTotal = ethers.utils.formatEther(tx.gasUsed.mul(gasPrice));
         const busdCostTotal = +gasCostTotal * busdPrice;
-        console.info(`Starting the private auction costs ${gasCostTotal} ETH or ${busdCostTotal} BUSD.`)
+        console.info(`Starting the private mint costs ${gasCostTotal} ETH or ${busdCostTotal} BUSD.`)
     }
 
     await contract.whitelist([owner.address]);
 
     let tokensBought = 1;
-    const value = privateAuctionPrice;
+    const value = privateMintPrice;
     const signature = createSignature(owner.address, value, "private", signer);
-    const tx = await (await contract.buyPrivateAuction(signature, {value})).wait();
+    const tx = await (await contract.privateMint(signature, {value})).wait();
     {
-        console.info("Checking Price for buying tickets in the private auction");
+        console.info("Checking Price for minting tokens in the private mint");
         for (let i = 1; i <= 5; ++i) {
             const wallet = wallets[i];
             const walletContract = contract.connect(wallet);
-            const value = privateAuctionPrice.mul(i);
+            const value = privateMintPrice.mul(i);
             const signature = createSignature(wallet.address, value, "private", signer);
-            const tx = await (await walletContract.buyPrivateAuction(signature, {value})).wait();
+            const tx = await (await walletContract.privateMint(signature, {value})).wait();
 
             const gasCostTotal = ethers.utils.formatEther(tx.gasUsed.mul(gasPrice));
             const gasCostPerToken = +gasCostTotal / i;
             const busdCostTotal = +gasCostTotal * busdPrice;
             const busdCostPerToken = gasCostPerToken * busdPrice;
-            console.info(`Buying ${i} tickets in the private auction costs ${gasCostTotal} ETH or ${busdCostTotal} BUSD. This results in a single ticket costing ${gasCostPerToken} ETH or ${busdCostPerToken} BUSD`);
+            console.info(`Minting ${i} tokens in the private mint costs ${gasCostTotal} ETH or ${busdCostTotal} BUSD. This results in a single token costing ${gasCostPerToken} ETH or ${busdCostPerToken} BUSD`);
             tokensBought += i;
         }
     }
     {
-        console.info("Buying remaining tokens");
+        console.info("Mint remaining tokens");
         const wallet = wallets[Math.floor(Math.random() * wallets.length)];
         const walletContract = contract.connect(wallet);
-        const value = privateAuctionPrice.mul(1000 - tokensBought);
+        const value = privateMintPrice.mul(1000 - tokensBought);
         const signature = createSignature(wallet.address, value, "private", signer);
-        await walletContract.buyPrivateAuction(signature, {value});
+        await walletContract.privateMint(signature, {value});
     }
-    {
-        console.info("Checking Price for minting 1000 tokens");
-
-        const tx = await (await contract.mintAndDistribute(1000)).wait();
-        const gasCostTotal = ethers.utils.formatEther(tx.gasUsed.mul(gasPrice));
-        const gasCostPerToken = +gasCostTotal / 1000;
-        const busdCostTotal = +gasCostTotal * busdPrice;
-        const busdCostPerToken = gasCostPerToken * busdPrice;
-        console.info(`Minting 1000 tokens costs ${gasCostTotal} ETH or ${busdCostTotal} BUSD. This results in a single minted token costing ${gasCostPerToken} ETH or ${busdCostPerToken} BUSD`)
-    }
-
 }
 
 // We recommend this pattern to be able to use async/await everywhere

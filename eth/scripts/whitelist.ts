@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import {Contract, Wallet} from 'ethers';
 import {ethers} from 'hardhat';
-import {abi, address} from './contract/AuctionV2Upgradeable.json'
+import {abi, address} from './contract/AuctionV3Upgradeable.json'
 import question from '../utils/question';
 
 async function main() {

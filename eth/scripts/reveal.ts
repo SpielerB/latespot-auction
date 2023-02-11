@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import {Contract, Wallet} from 'ethers';
 import {ethers} from 'hardhat';
-import {abi, address} from './contract/AuctionV2Upgradeable.json';
+import {abi, address} from './contract/AuctionV3Upgradeable.json';
 
 async function main() {
     const signer = new Wallet(process.env.OWNER_PRIVATE_KEY as string, ethers.provider);

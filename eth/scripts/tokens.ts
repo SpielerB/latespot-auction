@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import {Contract, Wallet} from 'ethers';
 import {ethers} from 'hardhat';
-import {abi, address} from './contract/AuctionV2Upgradeable.json'
+import {abi, address} from './contract/AuctionV3Upgradeable.json'
 import question from '../utils/question';
 
 async function main() {
@@ -13,8 +13,7 @@ async function main() {
     let i = 0;
     const availableWallets = [];
     for (const wallet of wallets) {
-        const walletContract = contract.connect(wallet);
-        availableWallets[i] = walletContract;
+        availableWallets[i] = contract.connect(wallet);
         console.log(`${i}: ${wallets[i].address}`);
         ++i;
     }
@@ -24,7 +23,7 @@ async function main() {
     }
     console.log()
     console.log("Select wallet index to see tokens for:")
-    const walletIndex = await question(">");
+    const walletIndex = await question("> ");
 
     const walletContract = availableWallets[+walletIndex];
     const ids = await walletContract.tokens();
@@ -38,7 +37,6 @@ async function main() {
         const data = await response.json();
         console.log(staked, stakeTime, stakeLevel, data);
     }
-    console.log("Done");
 }
 
 // We recommend this pattern to be able to use async/await everywhere
