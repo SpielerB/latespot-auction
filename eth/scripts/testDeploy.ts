@@ -15,37 +15,32 @@ dotenv.config();
 const {dirname} = require('path');
 const appDir = dirname(require.main?.filename);
 
+interface DependencyObject {
+    [key: string]: Contract;
+}
+
 interface DeployContract {
     name: string;
-    params: (dependingContracts: { [key: string]: Contract }) => any[];
+    params: (dependingContracts: DependencyObject) => any[];
     proxy?: boolean;
     dependsOn?: string[];
     upgrade?: boolean;
     upgradeAddress?: string;
 }
 
-const ALLOW_UPGRADE = false;
+type ContractData = DeployContract | ((dependingContracts: DependencyObject) => DeployContract);
 
 async function main() {
+    if (fs.existsSync(`${appDir}/../../.openzeppelin/unknown-31337.json`)) {
+        console.info("Removing openzeppelin proxy data for localhost...");
+        fs.rmSync(`${appDir}/../../.openzeppelin/unknown-31337.json`);
+    }
+
     const owner = new Wallet(process.env.OWNER_PRIVATE_KEY as string, ethers.provider);
     await setBalance(owner.address, ethers.utils.parseEther("1000"));
     const signerAddress = new Wallet(process.env.SIGNER_PRIVATE_KEY as string, ethers.provider).address;
 
-    let upgradeAuctionV2 = false;
-    let auctionV2UpgradeAddress;
-    try {
-        const {abi, address} = await import("./contract/AuctionV2Upgradeable.json");
-        const existingAuctionV2UpgradeableContract = new Contract(address, abi, owner);
-        // Redeploy if the owners don't match
-        if ((await existingAuctionV2UpgradeableContract.owner()) === owner.address) {
-            upgradeAuctionV2 = ALLOW_UPGRADE && true;
-            auctionV2UpgradeAddress = address;
-        }
-    } catch (e) {
-        // (Re)-Deploy the upgradeable auction V2 contract if an error occurs
-    }
-
-    const contracts: DeployContract[] = [
+    const contracts: ContractData[] = [
         {
             name: "MockChainLink",
             proxy: false,
@@ -87,9 +82,15 @@ async function main() {
                 MockLinkToken.address,
                 MockVRFWrapper.address,
             ],
-            upgrade: upgradeAuctionV2,
-            upgradeAddress: auctionV2UpgradeAddress
+            upgrade: false
         },
+        ({AuctionV2Upgradeable}) => ({
+            name: 'AuctionV3Upgradeable',
+            proxy: true,
+            params: () => [],
+            upgrade: true,
+            upgradeAddress: AuctionV2Upgradeable.address
+        }),
     ];
 
     console.log(`Deploying contracts on network '${network.name}'`)
@@ -98,7 +99,14 @@ async function main() {
     const gasPrice = ProposeGasPrice * 1e9;
     console.log(`Current ETH price: ${price} BUSD`)
     const deployed: { [key: string]: Contract } = {};
-    for (const {name, proxy, upgrade, params, upgradeAddress} of contracts) {
+    for (const deployData of contracts) {
+        const {
+            name,
+            proxy,
+            upgrade,
+            upgradeAddress,
+            params
+        } = typeof deployData !== "function" ? deployData : deployData(deployed);
         const factory = await ethers.getContractFactory(name, owner);
         let contract;
         if (proxy) {
@@ -147,6 +155,11 @@ async function main() {
             console.error("AppDir unavailable");
         }
         deployed[name] = contract;
+    }
+
+    if (fs.existsSync(`${appDir}/../../.openzeppelin/unknown-31337.json`)) {
+        console.info("Removing openzeppelin proxy data for localhost...");
+        fs.rmSync(`${appDir}/../../.openzeppelin/unknown-31337.json`);
     }
 }
 
