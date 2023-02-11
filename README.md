@@ -32,43 +32,31 @@ npx hardhat run .\eth\scripts\fund.ts
 npx hardhat run .\eth\scripts\whitelist.ts
 ```
 
-### Un-whitelist (interactive)
+### Start private mint
 
 ```shell
-npx hardhat run .\eth\scripts\unwhitelist.ts
+npx hardhat run .\eth\scripts\startPrivateMint.ts
 ```
 
-### Start private auction
+### Stop private mint
 
 ```shell
-npx hardhat run .\eth\scripts\startPrivateAuction.ts
+npx hardhat run .\eth\scripts\stopPrivateMint.ts
 ```
 
-### Stop private auction
+### Start public mint
 
 ```shell
-npx hardhat run .\eth\scripts\stopPrivateAuction.ts
+npx hardhat run .\eth\scripts\startPublicMint.ts
 ```
 
-### Start public auction
+### Stop public mint
 
 ```shell
-npx hardhat run .\eth\scripts\startPublicAuction.ts
+npx hardhat run .\eth\scripts\stopPublicMint.ts
 ```
 
-### Stop public auction
-
-```shell
-npx hardhat run .\eth\scripts\stopPublicAuction.ts
-```
-
-### Buy tickets (Interactive)
-
-```shell
-npx hardhat run .\eth\scripts\buy.ts
-```
-
-### Mint and distribute tokens
+### Mint tokens (Interactive)
 
 ```shell
 npx hardhat run .\eth\scripts\mint.ts
@@ -80,7 +68,7 @@ npx hardhat run .\eth\scripts\mint.ts
 npx hardhat run .\eth\scripts\definedStakeLevels.ts
 ```
 
-### Reveal metadata
+### Reveal metadata (requires stake levels)
 
 ```shell
 npx hardhat run .\eth\scripts\reveal.ts
