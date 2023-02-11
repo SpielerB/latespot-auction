@@ -6,7 +6,7 @@ if (typeof global.it === 'function') {
 }
 
 export const increaseNextBlockTime = async (seconds: number) => {
-  await network.provider.send('evm_increaseTime', [seconds]);
+    await network.provider.send('evm_increaseTime', [seconds]);
 };
 
 export const mineBlocks = async (count: BigNumberish) => {
@@ -25,7 +25,18 @@ export const deployProxy = async (name: string, ...args: any[]) => {
     const [owner] = await ethers.getSigners();
     const factory = await ethers.getContractFactory(name, owner);
     const contract = await upgrades.deployProxy(factory, args);
-    return await contract.deployed();
+    const deployedContract = await contract.deployed();
+    await deployedContract.deployTransaction.wait(1);
+    return deployedContract;
+}
+
+export const upgradeProxy = async (address: string, name: string) => {
+    const [owner] = await ethers.getSigners();
+    const factory = await ethers.getContractFactory(name, owner);
+    const contract = await upgrades.upgradeProxy(address, factory);
+    const upgradedProxy = await contract.deployed();
+    await upgradedProxy.deployTransaction.wait();
+    return upgradedProxy;
 }
 
 export const getBalance = async (address: string) => {
