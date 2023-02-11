@@ -6,7 +6,6 @@ import morgan from 'morgan';
 import * as dotenv from 'dotenv';
 import {arrayify} from '@ethersproject/bytes'
 import {abi, address} from './contract/AuctionV2Upgradeable.json';
-import {clearInterval} from 'timers';
 
 const helmet = require("helmet");
 
@@ -32,19 +31,20 @@ app.use(bodyParser.json());
 app.use(cors()); // Allow cors
 app.use(morgan('combined')); // Log requests
 
-let started = false;
+let auctionState: "NONE" | "PRIVATE" | "PRE_PUBLIC" | "PUBLIC" | "FINISHED" = "NONE";
+
+
 setTimeout(async () => {
     try {
-        // Initialize contract connection and set started value
-        started = await contract.privateAuctionStarted();
+        // Initialize contract connection
+        await contract.privateAuctionStarted();
     } catch (error) {
         console.error("Error while initializing contract. Continuing with execution.");
     }
 }, 0);
-
 app.get('/', async (req, res) => {
     try {
-        if (started) {
+        if (auctionState !== "NONE") {
             const data = {
                 started: true,
                 contractAddress: address,
@@ -64,14 +64,14 @@ app.post('/sign', async (req, res) => {
     try {
         const {value, address} = req.body;
         console.log(`Signing request for ${address}@${value}`)
-        const isPrivateAuction = await contract.privateAuctionActive();
-        const isPublicAuction = await contract.publicAuctionActive();
-        if (!isPrivateAuction && !isPublicAuction) {
+
+        if (auctionState !== "PUBLIC" && auctionState !== "PRIVATE") {
             console.error("No auction active");
             res.sendStatus(400);
             return;
         }
-        const auctionPhase = isPrivateAuction ? "private" : "public";
+
+        const auctionPhase = auctionState.toLowerCase();
         const payload = AbiCoder.defaultAbiCoder().encode(['address', 'uint256', 'string'], [address, value, auctionPhase]);
         const hash = keccak256(payload);
         const signature = await signer.signMessage(arrayify(hash));
@@ -90,14 +90,26 @@ app.listen(port, async () => {
 setTimeout(async () => {
     // Wait for provider to avoid spamming the console with reconnects
     await provider._waitUntilReady();
-    const intervalId = setInterval(async () => {
+    setInterval(async () => {
         if (provider.ready) {
             try {
-                console.info("Checking if contract is ready.");
-                started = await contract.privateAuctionStarted();
-                if (started) {
-                    console.info("Contract is ready. Stopping interval.");
-                    clearInterval(intervalId);
+                console.info("Checking auction state.");
+                const privateAuctionStarted = await contract.privateAuctionStarted();
+                if (privateAuctionStarted) {
+                    let updatedAuctionState: typeof auctionState = "PRIVATE";
+                    if (await contract.publicAuctionStopped()) {
+                        updatedAuctionState = "PRE_PUBLIC";
+                    }
+                    if (await contract.publicAuctionStarted()) {
+                        updatedAuctionState = "PUBLIC";
+                    }
+                    if (await contract.publicAuctionStopped()) {
+                        updatedAuctionState = "FINISHED";
+                    }
+                    if (auctionState !== updatedAuctionState) {
+                        console.info("Contract state changed:", updatedAuctionState);
+                    }
+                    auctionState = updatedAuctionState;
                 } else {
                     console.info("Contract not ready yet.");
                 }
@@ -110,12 +122,9 @@ setTimeout(async () => {
                     console.error("An error occurred while loading the contract ready state:", error);
                 }
             }
+        } else {
+            console.info("Provider not ready");
         }
     }, 10000);
-
-    if (started) {
-        console.info("Contract is ready");
-        clearInterval(intervalId);
-    }
 
 }, 0);
