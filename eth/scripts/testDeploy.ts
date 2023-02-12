@@ -137,8 +137,13 @@ async function main() {
             const {abi} = JSON.parse(rawContractMetadata.toString());
             console.log("Saving contract metadata");
             fs.mkdirSync(`${appDir}/../../server/contract/`, {recursive: true});
+            fs.mkdirSync(`${appDir}/../../dapp/src/contract/`, {recursive: true});
             fs.mkdirSync(`${appDir}/contract/`, {recursive: true});
             fs.writeFileSync(`${appDir}/../../server/contract/${name}.json`, JSON.stringify({
+                address: contract.address,
+                abi
+            }, null, 2), {flag: "w"});
+            fs.writeFileSync(`${appDir}/../../dapp/src/contract/${name}.json`, JSON.stringify({
                 address: contract.address,
                 abi
             }, null, 2), {flag: "w"});
