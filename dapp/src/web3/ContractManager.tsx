@@ -50,6 +50,7 @@ const ContractManager = () => {
         }
         if (account.isConnected && !account.isReconnecting && contractState === DisplayState.DISCONNECTED) {
             dispatch(setContractState(DisplayState.PRE_MINT));
+            dispatch(syncContractMetadata());
         }
     }, [account, contractState])
 

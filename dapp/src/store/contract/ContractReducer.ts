@@ -284,9 +284,6 @@ const reducer = createReducer(initialState, builder => {
         .addCase(syncContractModel.fulfilled, (state, action) => {
             state.contractModel = action.payload;
         })
-        .addCase(syncContractModel.rejected, (state) => {
-            state.contractModel = undefined;
-        })
         .addCase(updateContractMetadata, (state, action) => {
             state.metadata = action.payload;
         })
