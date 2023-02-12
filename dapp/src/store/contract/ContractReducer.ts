@@ -37,7 +37,7 @@ const getTransactionKey = (args: WatchTransaction) => {
 export const watchTransaction = createAsyncThunk<void, WatchTransaction, { state: RootState }>("contract/transaction/watch", async ({transaction}, thunkAPI) => {
     try {
         const tx = await transaction;
-        await tx.wait(2);
+        await tx.wait();
         if (!syncedContract) throw "Contract is not available";
         await thunkAPI.dispatch(syncContractModel());
     } catch (error: any) {
