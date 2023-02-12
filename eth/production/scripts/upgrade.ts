@@ -10,6 +10,7 @@ async function main() {
     await confirmation("You are about to upgrade an existing AuctionV2Upgradeable contract to V3.");
 
     const factory = await ethers.getContractFactory("AuctionV3Upgradeable", owner);
+    console.info("Upgrading contract...")
     const upgradedProxyContract = await upgrades.upgradeProxy(proxyAddress, factory);
 
     console.info("Contract has been upgraded to V3.")
