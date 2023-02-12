@@ -1,5 +1,5 @@
 import "./helper/productionScript"
-import {ensureEnv, getOwner} from './helper/productionScript';
+import {ensureEnv, getOwner, verify} from './helper/productionScript';
 // @ts-ignore
 import {ethers, upgrades} from 'hardhat';
 import {confirmation} from './helper/question';
@@ -11,6 +11,10 @@ async function main() {
 
     const factory = await ethers.getContractFactory("AuctionV3Upgradeable", owner);
     const upgradedProxyContract = await upgrades.upgradeProxy(proxyAddress, factory);
+
+    console.info("Contract has been upgraded to V3.")
+
+    await verify(upgradedProxyContract);
 }
 
 main()

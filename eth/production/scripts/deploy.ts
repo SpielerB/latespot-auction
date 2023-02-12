@@ -1,7 +1,7 @@
 import "./helper/productionScript"
 import {question} from './helper/question';
 import {Wallet} from 'ethers';
-import {ensureEnv} from './helper/productionScript';
+import {ensureEnv, verify} from './helper/productionScript';
 // @ts-ignore
 import {ethers, run, upgrades} from 'hardhat';
 
@@ -48,18 +48,8 @@ async function main() {
     await contract.deployTransaction.wait(6);
 
     console.info(`Contract deployed to ${contract.address}.`)
-    console.info("Do you want to verify the contract on etherscan:");
-    {
-        const response = await question("> ");
-        if (response !== "YES") {
-            return;
-        }
-    }
 
-    await run("verify:verify", {
-        address: contract.address,
-        constructorArguments: []
-    })
+    await verify(contract);
 
 }
 

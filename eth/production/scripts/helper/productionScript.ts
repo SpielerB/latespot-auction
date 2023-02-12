@@ -2,8 +2,9 @@ import {config} from 'dotenv';
 import * as path from 'path';
 import {Contract, ContractTransaction, Wallet} from 'ethers';
 // @ts-ignore
-import {ethers} from 'hardhat';
+import {ethers, run} from 'hardhat';
 import {abi} from '../../../artifacts/contracts/AuctionV2Upgradeable.sol/AuctionV2Upgradeable.json'
+import {question} from './question';
 
 config({
     path: path.resolve(process.cwd(), "eth/production/.env.production"),
@@ -28,4 +29,20 @@ export const createContract = () => {
 
 export const getOwner = () => {
     return new Wallet(ensureEnv("CONTRACT_OWNER_PRIVATE_KEY"), ethers.provider);
+}
+
+export const verify = async (contract: Contract) => {
+    
+    console.info("Do you want to verify the contract on etherscan:");
+    {
+        const response = await question("> ");
+        if (response !== "YES") {
+            return;
+        }
+    }
+
+    await run("verify:verify", {
+        address: contract.address,
+        constructorArguments: []
+    })
 }
