@@ -34,14 +34,12 @@ const getTransactionKey = (args: WatchTransaction) => {
     return "unknown";
 }
 
-export const updateContractModel = createAction<Contract | undefined>("contract/model/update");
-
 export const watchTransaction = createAsyncThunk<void, WatchTransaction, { state: RootState }>("contract/transaction/watch", async ({transaction}, thunkAPI) => {
     try {
         const tx = await transaction;
         await tx.wait(2);
         if (!syncedContract) throw "Contract is not available";
-        await thunkAPI.dispatch(syncContract());
+        await thunkAPI.dispatch(syncContractModel());
     } catch (error: any) {
         if (error.code !== "ACTION_REJECTED") {
             throw error;
@@ -49,7 +47,9 @@ export const watchTransaction = createAsyncThunk<void, WatchTransaction, { state
     }
 });
 
-export const syncContract = createAsyncThunk<Contract | undefined, void, { state: RootState }>("contract/model/sync", async (ignore, thunkAPI) => {
+export const updateContractModel = createAction<Contract | undefined>("contract/model/update");
+
+export const syncContractModel = createAsyncThunk<Contract | undefined, void, { state: RootState }>("contract/model/sync", async (ignore, thunkAPI) => {
     if (!syncedContract) return undefined;
     const state = thunkAPI.getState();
     const {displayState} = state.application;
@@ -89,75 +89,6 @@ export const syncContract = createAsyncThunk<Contract | undefined, void, { state
     return existingContractModel;
 })
 
-export const stake = createAsyncThunk<void, ContractToken, { state: RootState }>("contract/token/stake", async (token, thunkAPI) => {
-    if (!syncedContract) throw "No contract available. Please try again later.";
-    const model = thunkAPI.getState().contract.contractModel;
-    if (!model) throw "Local contract model is empty. Please try again later.";
-
-    if (token.staked) throw "Token has already been staked";
-    if (token.level === 3) throw "Token is already at max level"
-    if (thunkAPI.getState().application.displayState !== DisplayState.STAKING) throw "Staking is not active";
-
-    thunkAPI.dispatch(watchTransaction({
-        transaction: syncedContract.stake(token.id),
-        type: "stake",
-        token
-    }));
-
-});
-
-export const unStake = createAsyncThunk<void, ContractToken, { state: RootState }>("contract/token/unstake", async (token, thunkAPI) => {
-    if (!syncedContract) throw "No contract available. Please try again later.";
-    const model = thunkAPI.getState().contract.contractModel;
-    if (!model) throw "Local contract model is empty. Please try again later.";
-
-    if (!token.staked) throw "Token is not staked";
-    if (thunkAPI.getState().application.displayState !== DisplayState.STAKING) throw "Staking is not active";
-
-    thunkAPI.dispatch(watchTransaction({
-        transaction: syncedContract.unStake(token.id),
-        type: "unstake",
-        token
-    }));
-
-});
-
-export const mint = createAsyncThunk<void, number, { state: RootState }>("contract/function/mint", async (tokenCount, thunkAPI) => {
-    if (!syncedContract) throw "No contract available. Please try again later.";
-    if (tokenCount <= 0) throw "You must buy at least one token";
-    const model = thunkAPI.getState().contract.contractModel;
-    if (!model) throw "Local contract model is empty. Please try again later.";
-
-    const isPrivateMintActive = model.privateMint.isActive;
-    const isPublicMintActive = model.publicMint.isActive;
-
-    if (!isPublicMintActive && !isPrivateMintActive) throw "No active mint.";
-    if (isPrivateMintActive && !model.whitelisted) throw "Current wallet not whitelisted";
-
-    const price = BigNumber.from(isPrivateMintActive ? model.privateMint.price : model.publicMint.price);
-    const value = price.mul(tokenCount);
-    const address = await syncedContract.signer.getAddress();
-
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/sign`, {
-        method: "POST",
-        body: JSON.stringify({address, value: value.toString()}),
-        headers: {
-            "Content-Type": "application/json"
-        }
-    });
-
-    if (!response.ok) throw `HTTP ${response.status}: ${response.statusText}`;
-
-    const signature = await response.text()
-    let transactionPromise;
-    if (isPrivateMintActive) {
-        transactionPromise = syncedContract.privateMint(signature, {value});
-    } else {
-        transactionPromise = syncedContract.publicMint(signature, {value});
-    }
-    thunkAPI.dispatch(watchTransaction({transaction: transactionPromise, type: "buy"}))
-})
-
 export const updateContractSyncLoop = createAsyncThunk<void, EthersContract | undefined | null, { state: RootState }>("contract/sync/update", (contract, thunkAPI) => {
     const contractRemoved = syncedContract && !contract
     syncedContract = contract;
@@ -172,7 +103,7 @@ export const updateContractSyncLoop = createAsyncThunk<void, EthersContract | un
             return;
         }
         try {
-            thunkAPI.dispatch(syncContract());
+            thunkAPI.dispatch(syncContractModel());
         } catch (e) {
             console.error("Error while fetching contract model", e)
         }
@@ -185,6 +116,19 @@ export const updateContractSyncLoop = createAsyncThunk<void, EthersContract | un
 });
 
 export const updateContractMetadata = createAction<ContractMetadata>("contract/metadata/update");
+
+export const syncContractMetadata = createAsyncThunk<void, void, { state: RootState }>("contract/metadata/sync", async (ignore, thunkAPI) => {
+    if (thunkAPI.getState().application.displayState === DisplayState.DISCONNECTED) return;
+    const response = await fetch(import.meta.env.VITE_API_URL);
+    const remoteMetadata = await response.json();
+    const localMetadata = thunkAPI.getState().contract.metadata;
+    if (!deepEqual(remoteMetadata, localMetadata)) {
+        thunkAPI.dispatch(updateContractMetadata(remoteMetadata));
+        if (localMetadata.started && !remoteMetadata.started) {
+            thunkAPI.dispatch(setContractState(DisplayState.PRE_MINT));
+        }
+    }
+});
 
 const syncRawTokens = createAsyncThunk<ContractToken[], void, { state: RootState }>("contract/tokens/sync", async (ignore, thunkAPI) => {
     if (!syncedContract) throw "No contract connected";
@@ -262,15 +206,85 @@ const initialState: ContractState = {
     tokenMetadataSyncPending: {}
 };
 
+
+export const stake = createAsyncThunk<void, ContractToken, { state: RootState }>("contract/token/stake", async (token, thunkAPI) => {
+    if (!syncedContract) throw "No contract available. Please try again later.";
+    const model = thunkAPI.getState().contract.contractModel;
+    if (!model) throw "Local contract model is empty. Please try again later.";
+
+    if (token.staked) throw "Token has already been staked";
+    if (token.level === 3) throw "Token is already at max level"
+    if (thunkAPI.getState().application.displayState !== DisplayState.STAKING) throw "Staking is not active";
+
+    thunkAPI.dispatch(watchTransaction({
+        transaction: syncedContract.stake(token.id),
+        type: "stake",
+        token
+    }));
+
+});
+
+export const unStake = createAsyncThunk<void, ContractToken, { state: RootState }>("contract/token/unstake", async (token, thunkAPI) => {
+    if (!syncedContract) throw "No contract available. Please try again later.";
+    const model = thunkAPI.getState().contract.contractModel;
+    if (!model) throw "Local contract model is empty. Please try again later.";
+
+    if (!token.staked) throw "Token is not staked";
+    if (thunkAPI.getState().application.displayState !== DisplayState.STAKING) throw "Staking is not active";
+
+    thunkAPI.dispatch(watchTransaction({
+        transaction: syncedContract.unStake(token.id),
+        type: "unstake",
+        token
+    }));
+
+});
+
+export const mint = createAsyncThunk<void, number, { state: RootState }>("contract/function/mint", async (tokenCount, thunkAPI) => {
+    if (!syncedContract) throw "No contract available. Please try again later.";
+    if (tokenCount <= 0) throw "You must buy at least one token";
+    const model = thunkAPI.getState().contract.contractModel;
+    if (!model) throw "Local contract model is empty. Please try again later.";
+
+    const isPrivateMintActive = model.privateMint.isActive;
+    const isPublicMintActive = model.publicMint.isActive;
+
+    if (!isPublicMintActive && !isPrivateMintActive) throw "No active mint.";
+    if (isPrivateMintActive && !model.whitelisted) throw "Current wallet not whitelisted";
+
+    const price = BigNumber.from(isPrivateMintActive ? model.privateMint.price : model.publicMint.price);
+    const value = price.mul(tokenCount);
+    const address = await syncedContract.signer.getAddress();
+
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/sign`, {
+        method: "POST",
+        body: JSON.stringify({address, value: value.toString()}),
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+
+    if (!response.ok) throw `HTTP ${response.status}: ${response.statusText}`;
+
+    const signature = await response.text()
+    let transactionPromise;
+    if (isPrivateMintActive) {
+        transactionPromise = syncedContract.privateMint(signature, {value});
+    } else {
+        transactionPromise = syncedContract.publicMint(signature, {value});
+    }
+    thunkAPI.dispatch(watchTransaction({transaction: transactionPromise, type: "buy"}))
+})
+
 const reducer = createReducer(initialState, builder => {
     builder
         .addCase(updateContractModel, (state, action) => {
             state.contractModel = action.payload;
         })
-        .addCase(syncContract.fulfilled, (state, action) => {
+        .addCase(syncContractModel.fulfilled, (state, action) => {
             state.contractModel = action.payload;
         })
-        .addCase(syncContract.rejected, (state) => {
+        .addCase(syncContractModel.rejected, (state) => {
             state.contractModel = undefined;
         })
         .addCase(updateContractMetadata, (state, action) => {
