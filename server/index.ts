@@ -1,11 +1,11 @@
-import {AbiCoder, Contract, JsonRpcProvider, keccak256, Wallet} from 'ethers';
+import {Contract, JsonRpcProvider, Wallet} from 'ethers';
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
 import morgan from 'morgan';
 import * as dotenv from 'dotenv';
-import {arrayify} from '@ethersproject/bytes'
 import {abi, address} from './contract/AuctionV3Upgradeable.json';
+import ContractModel from './model/ContractModel';
 
 const helmet = require("helmet");
 
@@ -33,30 +33,38 @@ morgan.token('remote-addr', (req) => JSON.stringify(req.headers['x-real-ip'] || 
 
 app.use(morgan("[:date[iso]] HTTP/:http-version :method :url :status - :remote-addr - :response-time ms - :user-agent")); // Log requests
 
-let mintPhase: "NONE" | "PRIVATE" | "PRE_PUBLIC" | "PUBLIC" | "FINISHED" = "NONE";
+let contractModel: ContractModel | undefined = undefined;
 
 const syncContract = async () => {
     try {
-        console.info("Checking mint state.");
-        const privateMintStarted = await contract.privateMintStarted();
-        if (privateMintStarted) {
-            let updatedMintPhase: typeof mintPhase = "PRIVATE";
-            if (await contract.privateMintStopped()) {
-                updatedMintPhase = "PRE_PUBLIC";
-            }
-            if (await contract.publicMintStarted()) {
-                updatedMintPhase = "PUBLIC";
-            }
-            if (await contract.publicMintStopped()) {
-                updatedMintPhase = "FINISHED";
-            }
-            if (mintPhase !== updatedMintPhase) {
-                console.info("Mint state changed:", updatedMintPhase);
-            }
-            mintPhase = updatedMintPhase;
-        } else {
-            console.info("Mint not ready yet.");
-        }
+        console.info("Syncing contract state");
+        const updatedContractModel: ContractModel = {
+            privateMint: {
+                hasStarted: await contract.privateMintStarted(),
+                isActive: await contract.privateMintActive(),
+                hasStopped: await contract.privateMintStopped(),
+                walletTokens: 0,
+                tokensMinted: +(await contract.privateMintTokenCount()).toString(),
+                tokenSupply: +(await contract.privateMintSupply()).toString(),
+                tokenLimit: +(await contract.privateMintTokensPerWallet()).toString(),
+                price: (await contract.privateMintPrice()).toString()
+            },
+            publicMint: {
+                hasStarted: await contract.publicMintStarted(),
+                isActive: await contract.publicMintActive(),
+                hasStopped: await contract.publicMintStopped(),
+                walletTokens: 0,
+                tokensMinted: +(await contract.publicMintTokenCount()).toString(),
+                tokenSupply: +(await contract.publicMintSupply()).toString(),
+                tokenLimit: +(await contract.publicMintTokensPerWallet()).toString(),
+                price: (await contract.publicMintPrice()).toString(),
+            },
+            tokensRevealed: await contract.revealed(),
+            mintedTokens: 0,
+            balance: 0,
+            whitelisted: false
+        };
+        contractModel = updatedContractModel;
     } catch (error: any) {
         if (error?.code === "BAD_DATA") {
             console.error("Contract returned bad data.");
@@ -65,7 +73,7 @@ const syncContract = async () => {
         } else if (error?.code === "CALL_EXCEPTION") {
             console.error("Unable to call contract");
         } else {
-            console.error("An error occurred while loading the contract ready state:", error);
+            console.error("An error occurred while loading the contract model:", error);
         }
     }
     setTimeout(syncContract, 10000);
@@ -82,42 +90,10 @@ setTimeout(async () => {
 }, 0);
 
 app.get('/', async (req, res) => {
-    try {
-        if (mintPhase !== "NONE") {
-            const data = {
-                started: true,
-                contractAddress: address,
-                abi
-            };
-            res.send(data);
-        } else {
-            res.send({started: false, contractAddress: null, abi: null});
-        }
-    } catch (error) {
-        console.error(error);
-        res.send({started: false, contractAddress: null, abi: null});
-    }
-});
-
-app.post('/sign', async (req, res) => {
-    try {
-        const {value, address} = req.body;
-        console.log(`Signing request for ${address}@${value}`)
-
-        if (mintPhase !== "PUBLIC" && mintPhase !== "PRIVATE") {
-            console.error("No auction active");
-            res.sendStatus(400);
-            return;
-        }
-
-        const currentMintPhase = mintPhase.toLowerCase();
-        const payload = AbiCoder.defaultAbiCoder().encode(['address', 'uint256', 'string'], [address, value, currentMintPhase]);
-        const hash = keccak256(payload);
-        const signature = await signer.signMessage(arrayify(hash));
-        res.send(signature);
-    } catch (error) {
-        console.error(error);
-        res.sendStatus(400);
+    if (contractModel) {
+        res.send(contractModel);
+    } else {
+        res.sendStatus(404);
     }
 });
 
