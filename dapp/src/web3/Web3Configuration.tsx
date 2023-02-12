@@ -1,4 +1,4 @@
-import {EthereumClient, modalConnectors, walletConnectProvider,} from "@web3modal/ethereum";
+import {Chain, EthereumClient, modalConnectors, walletConnectProvider,} from "@web3modal/ethereum";
 
 import {Web3Modal} from "@web3modal/react";
 
@@ -8,7 +8,7 @@ import {hardhat} from '@wagmi/chains';
 
 export const projectId = import.meta.env.VITE_WALLETCONNECT_CLOUD_KEY;
 
-let chains = [mainnet];
+let chains: Chain[] = [mainnet];
 if (import.meta.env.DEV) {
     chains = [hardhat];
 }
@@ -38,8 +38,12 @@ export const Web3Configuration = (props: any) => {
                     {props.children}
                 </WagmiConfig>
 
-                <Web3Modal themeZIndex={1000000} themeMode="dark" projectId={projectId}
-                           ethereumClient={ethereumClient}/>
+                <Web3Modal
+                    themeZIndex={1000000}
+                    themeMode="dark"
+                    projectId={projectId}
+                    ethereumClient={ethereumClient}
+                />
             </>
         )
     } catch (e) {
