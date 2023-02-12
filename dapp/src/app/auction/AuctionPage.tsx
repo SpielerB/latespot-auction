@@ -60,7 +60,7 @@ const MintSalesForm = (props: SalesProps) => {
     const [amount, setAmount] = useState<number>(1);
     const [showInfo, setShowInfo] = useState<boolean>(false);
     const [showError, setShowError] = useState<boolean>(false);
-    const price = BigNumber.from(props.auction?.price);
+    const price = BigNumber.from(props.auction?.price ?? "0");
     const ethPrice = ethers.utils.formatEther(price);
     const totalPrice = (+ethers.utils.formatEther(price.mul(amount))).toLocaleString('de-CH', {
         minimumFractionDigits: 2,
