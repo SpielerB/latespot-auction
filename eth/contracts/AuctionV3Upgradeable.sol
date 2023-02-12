@@ -417,39 +417,13 @@ contract AuctionV3Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     }
 
     /*
-    * Stakes the defined token
-    * The token will be transferred to the contract until un-staked
-    */
-    function stake(uint256 tokenId_) public {
-        require(publicMintStopped, "Mint is still ongoing");
-        require(revealed, "Tokens have not been revealed");
-        require(_stakeStartTimeMap[tokenId_] == 0, "Token has already been staked");
-        require(_stakeLevelTimeMap[tokenId_] == 0, "Token has already been staked beyond level 0");
-        require(ownerOf(tokenId_) == _msgSender(), "This token does not belong to the sender wallet");
-
-        _stakeOwnerMap[tokenId_] = _msgSender();
-        _stakeStartTimeMap[tokenId_] = block.timestamp;
-
-        transferFrom(_msgSender(), address(this), tokenId_);
-
-        emit TokenStaked(_msgSender(), tokenId_);
-    }
-
-    /*
-    * Returns a boolean indicating if the token is currently staked
-    */
-    function staked(uint256 tokenId_) public view returns (bool) {
-        return _stakeStartTimeMap[tokenId_] != 0;
-    }
-
-    /*
     * Returns a boolean indicating if the token is currently staked
     */
     function tokens() public view returns (uint256[] memory) {
         uint256[] memory possibleOwnedTokens = new uint256[](totalSupply());
         uint256 index = 0;
         for (uint256 i = 1; i <= totalSupply(); ++i) {
-            if (ownerOf(i) == _msgSender() || _stakeOwnerMap[i] == _msgSender()) {
+            if (ownerOf(i) == _msgSender()) {
                 possibleOwnedTokens[index++] = i;
             }
         }
@@ -459,81 +433,6 @@ contract AuctionV3Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
             ownedTokens[i] = possibleOwnedTokens[i];
         }
         return ownedTokens;
-    }
-
-    /*
-    * Unlocks a token. This will unlock the token for trading and set the stake level for this token.
-    */
-    function unStake(uint256 tokenId_) public {
-        require(_stakeStartTimeMap[tokenId_] != 0, "Token has not been staked");
-        require(_stakeOwnerMap[tokenId_] == _msgSender(), "Token does not belong to the sender wallet");
-
-        uint256 time = block.timestamp - _stakeStartTimeMap[tokenId_];
-        if (_definedStakeLevels[0] <= time) {
-            _stakeLevelTimeMap[tokenId_] = time;
-        }
-        _stakeStartTimeMap[tokenId_] = 0;
-
-        delete _stakeOwnerMap[tokenId_];
-
-        _transfer(address(this), _msgSender(), tokenId_);
-        emit TokenUnStaked(_msgSender(), tokenId_);
-    }
-
-    /*
-    * Returns how long the given token has been staked for
-    */
-    function stakeTime(uint256 token) public view returns (uint256) {
-        uint256 stakeLevelTime = _stakeLevelTimeMap[token];
-        if (stakeLevelTime == 0 && _stakeStartTimeMap[token] > 0) {
-            stakeLevelTime = block.timestamp - _stakeStartTimeMap[token];
-        }
-        return stakeLevelTime;
-    }
-
-    /*
-    * Returns the stake level for the given token
-    */
-    function stakeLevel(uint256 token) public view returns (uint256) {
-        uint256 stakeLevelTime = _stakeLevelTimeMap[token];
-        if (stakeLevelTime == 0 && _stakeStartTimeMap[token] > 0) {
-            stakeLevelTime = block.timestamp - _stakeStartTimeMap[token];
-        }
-
-        uint256 level = 0;
-        for (uint256 i = 0; i < _definedStakeLevels.length; ++i) {
-            if (stakeLevelTime < _definedStakeLevels[i]) {
-                break;
-            }
-            level = i + 1;
-        }
-        return level;
-    }
-
-    /*
-    * Returns the URI pointing to the given tokens metadata. The value may change depending on the reveal state and the level of the given token.
-    */
-    function tokenURI(uint256 tokenId) public view override(ERC721Upgradeable) returns (string memory){
-        if (!revealed) return __baseURI;
-        uint256 level = stakeLevel(tokenId);
-        uint256 offset = seed % totalSupply();
-        uint256 metaId = ((tokenId + offset) % totalSupply()) + 1;
-        return string.concat(__realURI, '/', metaId.toString(), '_', level.toString(), '.json');
-    }
-
-    /*
-    * Defines the stake level for a given duration
-    */
-    function defineStakeLevels(uint256[] memory levelTimes) public onlyOwner {
-        require(!revealed, "Stake levels may not be changed after revealing the metadata");
-        _definedStakeLevels = levelTimes;
-    }
-
-    /*
-    * Returns the defined stake levels
-    */
-    function stakeLevels() public view returns (uint256[] memory) {
-        return _definedStakeLevels;
     }
 
     /*
