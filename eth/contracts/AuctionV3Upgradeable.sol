@@ -225,7 +225,7 @@ contract AuctionV3Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
         privateMintMap[_msgSender()] += tokensToMint;
 
         for (uint256 i = 0; i < tokensToMint; ++i) {
-            _safeMint(_msgSender(), _tokenCounter.current() + 1);
+            _mint(_msgSender(), _tokenCounter.current() + 1);
             _tokenCounter.increment();
             _privateMintTokenCounter.increment();
         }
@@ -310,7 +310,7 @@ contract AuctionV3Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
         publicMintMap[_msgSender()] += tokensToMint;
 
         for (uint256 i = 0; i < tokensToMint; ++i) {
-            _safeMint(_msgSender(), _tokenCounter.current() + 1);
+            _mint(_msgSender(), _tokenCounter.current() + 1);
             _tokenCounter.increment();
             _publicMintTokenCounter.increment();
         }
@@ -366,7 +366,7 @@ contract AuctionV3Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     */
     function preMint(uint256 count) public onlyOwner {
         for (uint256 i = 0; i < count; ++i) {
-            _safeMint(owner(), _tokenCounter.current() + 1);
+            _mint(owner(), _tokenCounter.current() + 1);
             _tokenCounter.increment();
         }
         preMintCount = _tokenCounter.current();
