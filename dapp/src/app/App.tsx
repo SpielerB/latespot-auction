@@ -1,13 +1,12 @@
 import ModalPage from './modal/ModalPage';
 import React from 'react';
-import WalletButton from './WalletButton';
 
 import './App.css'
 import {useDisplayState} from '../store/application/ApplicationReducer';
 import DisplayState from "../model/DisplayState";
-import {Staking} from './staking/Staking';
 import {useContractModel} from "../store/contract/ContractReducer";
-import AuctionPage from "./auction/AuctionPage";
+import MintPage from "./mint/MintPage";
+import ModalButton from './ModalButton';
 
 interface AppProps {
     mobileNavElement: Element | DocumentFragment;
@@ -19,29 +18,40 @@ const ModalContent = () => {
     const contractModel = useContractModel();
 
     switch (displayState) {
+        case DisplayState.PRE_MINT:
+            // TODO: Add actual page
+            return <MintPage
+                phase={0}
+                auction={undefined}
+                title="Pre Mint"
+            />;
         case DisplayState.PRIVATE_MINT:
-            return <AuctionPage
+            return <MintPage
                 phase={1}
                 auction={contractModel?.privateMint}
-                title="Whitelist sale"
+                title="Whitelist Mint"
             />;
         case DisplayState.PRE_PUBLIC_MINT:
-            return <AuctionPage
+            return <MintPage
                 phase={1}
                 auction={contractModel?.privateMint}
-                title="Whitelist sold out!"
+                title="All Whitelist Tokens Minted!"
             />;
         case DisplayState.PUBLIC_MINT:
-            return <AuctionPage
+            return <MintPage
                 phase={2}
                 auction={contractModel?.publicMint}
-                title="Public sale"
+                title="Public Mint"
             />;
-        case DisplayState.PRE_REVEAL:
-        case DisplayState.STAKING:
-            return <Staking/>;
+        case DisplayState.MINT_FINISHED:
+            // TODO: Add actual page
+            return <MintPage
+                phase={3}
+                auction={contractModel?.publicMint}
+                title="All Tokens Minted!"
+            />;
         default:
-            return <h1>Display not implemented</h1>
+            return null;
     }
 }
 
@@ -51,8 +61,8 @@ function App({mobileNavElement, desktopNavElement}: AppProps) {
             <ModalPage>
                 <ModalContent/>
             </ModalPage>
-            <WalletButton portalElement={desktopNavElement}/>
-            <WalletButton portalElement={mobileNavElement} mobile/>
+            <ModalButton portalElement={desktopNavElement}/>
+            <ModalButton portalElement={mobileNavElement} mobile/>
         </React.Fragment>
     );
 }

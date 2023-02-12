@@ -1,18 +1,31 @@
-import React, {PropsWithChildren} from 'react';
+import React, {PropsWithChildren, useEffect} from 'react';
 import "./InfoDialog.css"
+import {useAppDispatch} from '../store/Store';
+import {closeDialog, openDialog} from '../store/application/ApplicationReducer';
 
 interface InfoDialogProps {
     iconSrc: string;
     title: string;
-    confirmLabel: string;
+    confirmLabel?: string;
     cancelLabel?: string;
     open: boolean;
-    onConfirm: () => void;
+    onConfirm?: () => void;
     onCancel?: () => void;
+    confirmButton?: JSX.Element;
 
 }
 
 const InfoDialog = (props: PropsWithChildren<InfoDialogProps>) => {
+    const dispatch = useAppDispatch();
+
+    useEffect(() => {
+        if (props.open) {
+            dispatch(openDialog());
+        }
+        return () => {
+            dispatch(closeDialog);
+        };
+    }, [dispatch, props.open]);
 
     if (!props.open) return null;
 
@@ -44,7 +57,14 @@ const InfoDialog = (props: PropsWithChildren<InfoDialogProps>) => {
                     {props.children}
                 </div>
                 <div className="dialog-buttons">
-                    <button className="dialog-button" onClick={props.onConfirm}>{props.confirmLabel}</button>
+                    {props.confirmButton ??
+                        <button
+                            className="dialog-button"
+                            onClick={props.onConfirm}
+                        >
+                            {props.confirmLabel ?? "Confirm"}
+                        </button>
+                    }
                     {props.cancelLabel &&
                         <button className="dialog-button" onClick={props.onCancel}>{props.cancelLabel}</button>}
                 </div>

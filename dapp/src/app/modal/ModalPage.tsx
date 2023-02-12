@@ -1,32 +1,37 @@
 import "./ModalPage.css"
 import React, {useCallback, useEffect} from 'react';
 import {useAppDispatch} from '../../store/Store';
-import {closeModal, useModalOpen} from '../../store/application/ApplicationReducer';
+import {closeModal, useDialogOpen, useModalOpen} from '../../store/application/ApplicationReducer';
+import {useWeb3Modal} from '@web3modal/react';
 
 const ModalPage = ({children}: React.PropsWithChildren) => {
     const dispatch = useAppDispatch();
+    const {isOpen: web3ModalOpen} = useWeb3Modal();
+    const dialogOpen = useDialogOpen();
     const open = useModalOpen();
     const close = useCallback(() => dispatch(closeModal()), []);
 
-    const keyUpListener = useCallback((event: KeyboardEvent) => {
-        if (event.key === 'Escape') {
-            close()
-        }
-    }, [close])
 
     useEffect(() => {
+        const inputHandler = (event: KeyboardEvent) => {
+            console.log("Closing", dialogOpen, web3ModalOpen);
+            if (event.key === 'Escape') {
+                close();
+            }
+        };
+
         if (open) {
             document.body.classList.add("modal-open");
-            document.addEventListener('keyup', keyUpListener)
-        } else {
-            document.body.classList.remove("modal-open");
-            document.removeEventListener('keyup', keyUpListener);
+            if (!dialogOpen && !web3ModalOpen) {
+                document.addEventListener('keydown', inputHandler);
+            }
         }
+
         return () => {
             document.body.classList.remove("modal-open");
-            document.removeEventListener('keyup', keyUpListener);
+            document.removeEventListener('keydown', inputHandler);
         }
-    }, [open, keyUpListener]);
+    }, [open, dialogOpen, web3ModalOpen]);
 
     return (
         <div

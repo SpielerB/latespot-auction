@@ -1,10 +1,11 @@
 import {useSigner} from './WalletHooks';
-import {useContract as useWagmiContract} from 'wagmi';
-import {useContractMetadata} from '../store/contract/ContractReducer';
+import {useAccount, useContract as useWagmiContract} from 'wagmi';
+import {abi, address as localContractAddress} from '../contract/AuctionV3Upgradeable.json'
 
 export const useEtherContract = () => {
+    useAccount();
     const signerOrProvider = useSigner();
-    const {started, contractAddress, abi} = useContractMetadata();
-    const contract = useWagmiContract({address: contractAddress, abi, signerOrProvider})
-    return signerOrProvider && started ? contract : undefined;
+    const address = import.meta.env.VITE_CONTRACT_ADDRESS && localContractAddress;
+    const contract = useWagmiContract({address, abi, signerOrProvider})
+    return signerOrProvider ? contract : undefined;
 }

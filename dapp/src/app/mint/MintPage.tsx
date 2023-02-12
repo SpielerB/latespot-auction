@@ -1,11 +1,13 @@
 import React, {useEffect, useState} from 'react';
-import "./AuctionPage.css"
-import {mint, useMintTransaction, useContractModel,} from "../../store/contract/ContractReducer";
+import "./MintPage.css"
+import {mint, useContractModel, useMintError, useMintPending,} from "../../store/contract/ContractReducer";
 import {useAppDispatch} from "../../store/Store";
 import {BigNumber, ethers} from "ethers";
-import {useAddress} from "../../hooks/WalletHooks";
+import {useAddress, useWalletStatus} from "../../hooks/WalletHooks";
 import InfoDialog from "../InfoDialog";
 import Mint from "../../model/Mint";
+import MintButton from './MintButton';
+import CrossMintButton from './CrossMintButton';
 
 
 interface AuctionProps {
@@ -16,11 +18,13 @@ interface AuctionProps {
 
 interface SalesProps {
     auction?: Mint;
+    phase: number;
 }
 
 const MintHeader = (props: AuctionProps) => {
     const contractModel = useContractModel();
-    const tokenInWallet = contractModel?.mintedTokens ?? 0;
+    const walletStatus = useWalletStatus();
+    const tokenInWallet = contractModel?.balance ?? 0;
 
     const tokenSold = props.auction?.tokensMinted ?? 0;
     const tokenSupply = props.auction?.tokenSupply ?? 0;
@@ -33,9 +37,11 @@ const MintHeader = (props: AuctionProps) => {
         <div className="mint-header">
             <h4 className="mint-h4">phase #{props.phase}</h4>
             <h1 className="mint-h1">{props.title}</h1>
-            <div className="mint-mint-p">
-                You currently have {tokenInWallet} {tokenInWallet == 1 ? "token" : "tokens"}.
-            </div>
+            {walletStatus === "connected" &&
+                <div className="mint-mint-p">
+                    You currently have {tokenInWallet} {tokenInWallet == 1 ? "token" : "tokens"}.
+                </div>
+            }
             <h3 className="mint-h3">{stockString} Tokens LEFT </h3>
             <div className="mint-live">
                 <img
@@ -55,7 +61,8 @@ const MintHeader = (props: AuctionProps) => {
 const MintSalesForm = (props: SalesProps) => {
     const dispatch = useAppDispatch();
     const contractModel = useContractModel();
-    const transaction = useMintTransaction();
+    const mintPending = useMintPending();
+    const mintError = useMintError();
 
     const [amount, setAmount] = useState<number>(1);
     const [showInfo, setShowInfo] = useState<boolean>(false);
@@ -82,31 +89,22 @@ const MintSalesForm = (props: SalesProps) => {
         isEligible = false;
         selectText = "SOLD OUT!";
     } else if (maxTokensPerWallet === tokenCount) {
-        selectText = "MAXIMUM NUMBER OF Tokens REACHED";
+        selectText = "MAXIMUM NUMBER OF TOKENS REACHED";
         isEligible = false;
     } else {
-        selectText = "SELECT NFT AMOUNT";
+        selectText = "SELECT TOKEN AMOUNT";
         isEligible = true;
     }
 
-    const buttonText = () => {
-        if (transaction?.pending) {
-            return "Pending..."
-        } else {
-            return amount > 1 ? `Mint ${amount} Tokens` : "Mint Tokens"
-        }
-    }
-
-    let errorMessage = transaction?.error && transaction.errorMessage
-        || "An unidentified error occurred, please try again.";
+    let errorMessage = mintError;
 
     useEffect(() => {
-        if (transaction?.error) {
+        if (mintError) {
             setShowError(true);
         } else {
             setShowError(false);
         }
-    }, [transaction?.error])
+    }, [mintError])
 
     useEffect(() => {
         if (maxToken < amount) {
@@ -127,7 +125,7 @@ const MintSalesForm = (props: SalesProps) => {
                         value={amount}
                         onChange={event => setAmount(+event.target.value)}
                         className="mint-amount"
-                        disabled={!isEligible || transaction?.pending}
+                        disabled={!isEligible || mintPending}
                     >
                         {Array.from(Array(maxToken).keys()).map((i) =>
                             <option className="option" key={`token-${i + 1}`} value={i + 1}>
@@ -137,7 +135,8 @@ const MintSalesForm = (props: SalesProps) => {
                     </select>
                 </div>
 
-                <div className="mint-buy-info">Phase #1: Max. {maxTokensPerWallet} tokens per wallet
+                <div className="mint-buy-info">Phase #{props.phase}: Max. {maxTokensPerWallet} tokens per wallet and
+                    transaction
                 </div>
                 {isEligible && <>
                     <h3 className="mint-h3">summary:</h3>
@@ -146,10 +145,19 @@ const MintSalesForm = (props: SalesProps) => {
                         <span className="mint-buy-summary-bold"> {totalPrice} $ETH</span>
                     </div>
                 </>}
-                <button onClick={() => setShowInfo(true)} type="submit" className="mint-button w-button"
-                        disabled={!isEligible || transaction?.pending}>
-                    {buttonText()}
-                </button>
+                <div className="mint-buttons">
+                    <MintButton
+                        amount={amount}
+                        onMint={() => setShowInfo(true)}
+                        mintDisabled={!isEligible || mintPending}
+                    />
+                    <div hidden={!isEligible} className="mint-button-spacer">OR</div>
+                    <CrossMintButton
+                        hidden={!isEligible}
+                        etherPrice={ethers.utils.formatEther(price.mul(amount).toString())}
+                        disabled={mintPending}
+                    />
+                </div>
             </div>
             <InfoDialog
                 iconSrc="https://assets.website-files.com/621e34ea4b3095856cff1ff8/6226563ba9df1423307642dd_live-icon.svg"
@@ -200,27 +208,20 @@ const MintSalesForm = (props: SalesProps) => {
             >{errorMessage}</InfoDialog>
         </div>);
 }
-const AuctionPage = (props: AuctionProps) => {
+const MintPage = (props: AuctionProps) => {
     const walletAddress = useAddress();
 
     return (
         <div className="mint-section">
             <div className="mint-c">
                 <MintHeader {...props}/>
-                <MintSalesForm auction={props.auction}/>
+                <MintSalesForm phase={props.phase} auction={props.auction}/>
             </div>
             <div className="mint-line"/>
 
             <div className="mint-wallet">
                 <div className="mint-wallet-p"><h3 className="mint-h3">CONNECTED WALLET: </h3>{walletAddress}</div>
             </div>
-            <div className="mint-info">
-                <h3 className="mint-h3">ERC-721S</h3>
-                <p className="mint-info-p">
-                    We programmed the contract based on the ERC-721 standards.
-                    We call it the ERC-721S contract (S for Squirrels).
-                </p>
-            </div>
         </div>);
 }
-export default AuctionPage;
+export default MintPage;

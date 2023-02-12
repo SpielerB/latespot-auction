@@ -75,14 +75,8 @@
     color: #4F4F4F;
 }
 
-.mint-button {
-    padding: 0.38em 1.28em;
-    font-size: 1.143em;
-    line-height: 1.5em;
-}
-
-.mint-button:disabled {
-    background-color: gray;
+.mint-button-spacer {
+    margin: 8px 0
 }
 
 .option {

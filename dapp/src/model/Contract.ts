@@ -6,6 +6,5 @@ export default interface Contract {
     tokensRevealed: boolean;
     mintedTokens: number;
     balance: number;
-    stakingLevels: number[]
     whitelisted: boolean;
 }
