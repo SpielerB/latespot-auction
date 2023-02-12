@@ -1,17 +1,8 @@
 import {ethers} from 'hardhat';
 import {BigNumber, BigNumberish, Contract, ContractReceipt, ContractTransaction, Wallet} from 'ethers';
-import {
-    createSignature,
-    deploy,
-    deployProxy,
-    getBalance,
-    increaseNextBlockTime,
-    setBalance,
-    upgradeProxy
-} from './helper';
+import {createSignature, deploy, deployProxy, getBalance, setBalance, upgradeProxy} from './helper';
 import {expect} from 'chai';
 import {describe} from 'mocha';
-import {fail} from 'assert';
 import crypto from 'crypto';
 
 interface InitParams {
@@ -131,14 +122,8 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
             return tx;
         }
 
-        const privateMint = async (value: BigNumberish, signature?: string) => {
-            if (signature === undefined) {
-                const address = await contract.signer.getAddress();
-                const signatureSigner = await ethers.getSigner(await contract.signatureAddress());
-                signature = await createSignature(address, value, 'private', signatureSigner);
-            }
-
-            const tx: ContractTransaction = await contract.privateMint(signature, {value});
+        const privateMint = async (value: BigNumberish) => {
+            const tx: ContractTransaction = await contract.privateMint({value});
             await tx.wait(); // Wait for the block to be mined to ensure that the transaction has either been rejected or went through
             return tx;
         }
@@ -160,14 +145,9 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
             return tx;
         }
 
-        const publicMint = async (value: BigNumberish, signature?: string) => {
-            if (signature === undefined) {
-                const address = await contract.signer.getAddress();
-                const signatureSigner = await ethers.getSigner(await contract.signatureAddress());
-                signature = await createSignature(address, value, 'public', signatureSigner);
-            }
+        const publicMint = async (value: BigNumberish) => {
 
-            const tx: ContractTransaction = await contract.publicMint(signature, {value});
+            const tx: ContractTransaction = await contract.publicMint({value});
             await tx.wait(); // Wait for the block to be mined to ensure that the transaction has either been rejected or went through
             return tx;
         }
@@ -315,8 +295,6 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
                     await publicMint(5);
                     await stopPublicMint();
 
-                    await contract.defineStakeLevels([1000000]);
-
                     const baseURI = 'https://test.example.com';
                     await contract.requestReveal(baseURI);
                     const seed = await contract.seed();
@@ -324,58 +302,13 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
                     const offset = seed % totalSupply;
                     for (let i = 1; i <= 10; ++i) {
                         const metaId = (i + offset) % totalSupply + 1;
-                        expect(await contract.tokenURI(i)).to.equal(`${baseURI}/${metaId}_0.json`);
+                        expect(await contract.tokenURI(i)).to.equal(`${baseURI}/${metaId}.json`);
                     }
-                });
-
-                it('Should point to the correct level', async () => {
-                    await startPrivateMint({
-                        supply: BigNumber.from(5),
-                        price: BigNumber.from(1),
-                        tokensPerWallet: 5
-                    })
-                    await privateMint(5);
-                    await stopPrivateMint();
-                    await startPublicMint({supply: BigNumber.from(5), price: BigNumber.from(1)})
-                    await publicMint(5);
-                    await stopPublicMint();
-
-                    await contract.defineStakeLevels([10, 20, 30]);
-
-                    const baseURI = 'https://test.example.com';
-                    await contract.requestReveal(baseURI);
-                    await contract.stake(2);
-                    await contract.stake(3);
-                    await contract.stake(4);
-                    await increaseNextBlockTime(10);
-                    await contract.unStake(2);
-                    await increaseNextBlockTime(10);
-                    await contract.unStake(3);
-                    await increaseNextBlockTime(10);
-                    await contract.unStake(4);
-                    const seed = await contract.seed();
-                    const totalSupply = await contract.totalSupply();
-                    const offset = seed % totalSupply;
-                    expect(await contract.tokenURI(1)).to.equal(`${baseURI}/${(1 + offset) % totalSupply + 1}_0.json`);
-                    expect(await contract.tokenURI(2)).to.equal(`${baseURI}/${(2 + offset) % totalSupply + 1}_1.json`);
-                    expect(await contract.tokenURI(3)).to.equal(`${baseURI}/${(3 + offset) % totalSupply + 1}_2.json`);
-                    expect(await contract.tokenURI(4)).to.equal(`${baseURI}/${(4 + offset) % totalSupply + 1}_3.json`);
                 });
             });
         });
 
         context('Owner Functions', async () => {
-
-            describe('defineStakeLevels', function () {
-                it('Should set the correct stake levels', async () => {
-                    const levels = [
-                        60 * 60 * 24 * 30, // 30 days
-                        60 * 60 * 24 * 60 // 60 days
-                    ];
-                    await contract.defineStakeLevels(levels);
-                    expect((await contract.stakeLevels()).map((n: BigNumber) => n.toNumber())).to.contain.all.members(levels);
-                });
-            });
 
             context('withdraw', function () {
 
@@ -386,7 +319,6 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
                     await stopPrivateMint();
                     await startPublicMint();
                     await stopPublicMint();
-                    await contract.defineStakeLevels([1234]);
                     await contract.requestReveal("Test");
 
                     const ownerStartBalance = await owner.getBalance();
@@ -409,13 +341,6 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
                     await expect(contract.withdraw()).to.be.revertedWith('');
 
                     await expect(await getBalance(contract.address)).to.equal(contractStartBalance);
-                });
-
-                it('Should not allow to withdraw if mint is not over', async () => {
-                    await startPrivateMint();
-                    await stopPrivateMint();
-                    await startPublicMint();
-                    await expect(contract.withdraw()).to.be.revertedWith('');
                 });
             });
 
@@ -451,7 +376,6 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
                     await startPublicMint({supply: BigNumber.from(1), price: BigNumber.from(1)});
                     await publicMint(1);
                     await stopPublicMint();
-                    await contract.defineStakeLevels([10000]);
                     await contract.requestReveal('https://test.example.com');
                     expect(await contract.revealed()).to.be.true;
                 });
@@ -527,18 +451,6 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
                     await expect(privateMint(price)).to.be.revertedWith('Private mint is not active');
                 });
 
-                it('Should not allow wrong signature', async () => {
-                    const price = (await defaultPrivateMintParams()).price;
-                    const [wallet, otherWallet] = await ethers.getSigners();
-                    await setBalance(wallet.address, ethers.utils.parseEther("10000"));
-                    await startPrivateMint();
-                    await expect(privateMint(price, await createSignature(wallet.address, 2, 'unknown'))).to.be.revertedWith('Invalid signature');
-                    await expect(privateMint(price, await createSignature(otherWallet.address, price, 'private'))).to.be.revertedWith('Invalid signature');
-                    await expect(privateMint(price, await createSignature(wallet.address, price, 'private', otherWallet))).to.be.revertedWith('Invalid signature');
-                    await expect(privateMint(price, await createSignature(wallet.address, 2, 'private'))).to.be.revertedWith('Invalid signature');
-                    await expect(privateMint(price, await createSignature(wallet.address, price, 'unknown'))).to.be.revertedWith('Invalid signature');
-                });
-
                 it('Should not allow wrong price', async () => {
                     const price = (await defaultPrivateMintParams()).price;
                     const [wallet] = await ethers.getSigners();
@@ -547,6 +459,15 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
                     await expect(privateMint(price.add(1))).to.be.revertedWith('Value has to be a multiple of the price');
                     await expect(privateMint(price.sub(1))).to.be.revertedWith('Value has to be a multiple of the price');
                     await expect(privateMint(0)).to.be.revertedWith('Value has to be greater than 0');
+                });
+
+                it('Should mint correct amount of tokens', async () => {
+                    const price = (await defaultPrivateMintParams()).price;
+                    const [wallet] = await ethers.getSigners();
+                    await setBalance(wallet.address, ethers.utils.parseEther("10000"));
+                    await startPrivateMint();
+                    await privateMint(price.mul(2));
+                    expect(await contract.balanceOf(wallet.address)).to.equal(2);
                 });
             });
             describe('stopPrivateMint', async () => {
@@ -658,20 +579,6 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
                     await expect(publicMint(price)).to.be.revertedWith('Public mint is not active');
                 });
 
-                it('Should not allow wrong signature', async () => {
-                    const price = (await defaultPublicMintParams()).price;
-                    const [wallet, otherWallet] = await ethers.getSigners();
-                    await setBalance(wallet.address, ethers.utils.parseEther("10000"));
-                    await startPrivateMint();
-                    await stopPrivateMint();
-                    await startPublicMint();
-                    await expect(publicMint(price, await createSignature(wallet.address, 2, 'unknown'))).to.be.revertedWith('Invalid signature');
-                    await expect(publicMint(price, await createSignature(otherWallet.address, price, 'public'))).to.be.revertedWith('Invalid signature');
-                    await expect(publicMint(price, await createSignature(wallet.address, price, 'public', otherWallet))).to.be.revertedWith('Invalid signature');
-                    await expect(publicMint(price, await createSignature(wallet.address, 2, 'public'))).to.be.revertedWith('Invalid signature');
-                    await expect(publicMint(price, await createSignature(wallet.address, price, 'unknown'))).to.be.revertedWith('Invalid signature');
-                });
-
                 it('Should not allow wrong price', async () => {
                     const price = (await defaultPublicMintParams()).price;
                     const [wallet] = await ethers.getSigners();
@@ -682,6 +589,18 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
                     await expect(publicMint(price.add(1))).to.be.revertedWith('Value has to be a multiple of the price');
                     await expect(publicMint(price.sub(1))).to.be.revertedWith('Value has to be a multiple of the price');
                     await expect(publicMint(0)).to.be.revertedWith('Value has to be greater than 0');
+                });
+
+                it('Should mint correct amount of tokens', async () => {
+                    const price = (await defaultPublicMintParams()).price;
+                    const [wallet] = await ethers.getSigners();
+                    await setBalance(wallet.address, ethers.utils.parseEther("10000"));
+                    await startPrivateMint();
+
+                    await stopPrivateMint();
+                    await startPublicMint();
+                    await publicMint(price.mul(5));
+                    expect(await contract.balanceOf(wallet.address)).to.equal(5);
                 });
             });
             describe('stopPublicMint', async () => {
@@ -699,106 +618,6 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
             });
         });
 
-        context('Staking', async () => {
-
-            const levels = [3600, 7200, 10800, 14400, 18000];
-
-            beforeEach(async () => {
-                chainLinkContracts = await deployChainLink();
-                contract = await deployAuction({
-                    vrfCoordinator: chainLinkContracts.vrfCoordinator.address,
-                    vrfWrapper: chainLinkContracts.vrfWrapper.address,
-                    linkToken: chainLinkContracts.linkToken.address,
-                }); // Redeploy contract for each test to ensure clean state
-                const tx: ContractTransaction = await contract.whitelist((await getWhitelistedSigners()).map(s => s.address));
-                await tx.wait();
-
-                await setBalance(await contract.signer.getAddress(), ethers.utils.parseEther('100000'));
-                const {price: privatePrice} = await defaultPrivateMintParams();
-                const {price: publicPrice} = await defaultPublicMintParams();
-                await contract.defineStakeLevels(levels);
-                await startPrivateMint({tokensPerWallet: 5});
-                await privateMint(privatePrice.mul(5));
-                await stopPrivateMint();
-                await startPublicMint();
-                await publicMint(publicPrice.mul(5));
-                await stopPublicMint();
-            });
-
-            describe('stake', async () => {
-                it('Should not allow to stake if not revealed', async () => {
-                    await expect(contract.stake(1)).to.be.revertedWith('Tokens have not been revealed');
-                });
-                it('Should only allow the wallets token to be staked', async () => {
-                    await contract.requestReveal('https://test.example.com');
-                    const [, otherWallet] = await ethers.getSigners();
-                    contract = contract.connect(otherWallet);
-                    await expect(contract.stake(1)).to.be.revertedWith('This token does not belong to the sender wallet');
-                });
-                it('Should not allow for already staked tokens to be staked', async () => {
-                    await contract.requestReveal('https://test.example.com');
-                    await contract.stake(1);
-                    await expect(contract.stake(1)).to.be.revertedWith('Token has already been staked');
-
-                });
-                it('Should not allowed previously successful staked tokens to be staked again', async () => {
-                    await contract.requestReveal('https://test.example.com');
-                    await contract.stake(1);
-                    await increaseNextBlockTime(3601);
-                    await contract.unStake(1);
-                    await expect(contract.stake(1)).to.be.revertedWith('Token has already been staked beyond level 0');
-                });
-                it('Should allowed previously unsuccessful staked tokens to be staked again', async () => {
-                    await contract.requestReveal('https://test.example.com');
-                    await contract.stake(1);
-                    await contract.unStake(1);
-                    try {
-                        await contract.stake(1);
-                    } catch (e) {
-                        fail(`Was not able to stake again ${e}`)
-                    }
-                });
-                it('Should transfer token to contract', async () => {
-                    await contract.requestReveal('https://test.example.com');
-                    await contract.stake(1);
-                    expect(await contract.ownerOf(1)).to.equal(contract.address);
-                });
-            });
-
-            describe('unStake', async () => {
-                it('Should not allow to unStake if not staked', async () => {
-                    await contract.requestReveal('https://test.example.com');
-                    await expect(contract.unStake(1)).to.be.revertedWith('Token has not been staked');
-
-                });
-                it('Should not allow to unStake if not owner of token', async () => {
-                    const [, notOwner] = await ethers.getSigners();
-                    await contract.requestReveal('https://test.example.com');
-                    await contract.stake(1);
-
-                    contract = contract.connect(notOwner);
-                    await expect(contract.unStake(1)).to.be.revertedWith('Token does not belong to the sender wallet');
-                });
-                it('Should return the token to the original owner', async () => {
-                    const [owner] = await ethers.getSigners();
-                    await contract.requestReveal('https://test.example.com');
-                    await contract.stake(1);
-                    await contract.unStake(1);
-                    expect(await contract.ownerOf(1)).to.equal(owner.address);
-
-                });
-                it('Should set the correct stake level', async () => {
-                    await contract.requestReveal('https://test.example.com');
-                    for (let i = 0; i < levels.length; ++i) {
-                        const tokenId = i + 1;
-                        await contract.stake(tokenId);
-                        await increaseNextBlockTime(levels[i]);
-                        await contract.unStake(tokenId);
-                        expect(await contract.stakeLevel(tokenId)).to.equal(i + 1);
-                    }
-                });
-            });
-        });
     });
 }
 
