@@ -209,7 +209,7 @@ const syncRawTokens = createAsyncThunk<ContractToken[], void, { state: RootState
     return result;
 });
 
-const syncTokenMetadata = createAsyncThunk<TokenMetadata, ContractToken, { state: RootState }>("contract/tokens/metadata/sync", async (rawToken, thunkAPI) => {
+const syncTokenMetadata = createAsyncThunk<TokenMetadata, ContractToken, { state: RootState }>("contract/tokens/metadata/sync", async (rawToken) => {
     if (!syncedContract) throw "No contract connected";
     let tokenURI = rawToken.tokenURI;
     if (tokenURI.startsWith("ipfs://")) {
@@ -276,14 +276,14 @@ const reducer = createReducer(initialState, builder => {
         .addCase(updateContractMetadata, (state, action) => {
             state.metadata = action.payload;
         })
-        .addCase(syncRawTokens.pending, (state, action) => {
+        .addCase(syncRawTokens.pending, (state) => {
             state.rawTokensSyncPending = true;
         })
         .addCase(syncRawTokens.fulfilled, (state, action) => {
             state.rawTokens = action.payload;
             state.rawTokensSyncPending = false;
         })
-        .addCase(syncRawTokens.rejected, (state, action) => {
+        .addCase(syncRawTokens.rejected, (state) => {
             state.rawTokensSyncPending = false;
             // TODO: Error handling
         })
@@ -354,6 +354,6 @@ export const useRawTokensSyncPending = () => createSelectorHook()((state: RootSt
 export const useTokenMetadataSyncPending = (token: ContractToken) => createSelectorHook()((state: RootState) => state.contract.tokenMetadataSyncPending[token.id]);
 export const useContractSyncPending = () => createSelectorHook()((state: RootState) => state.contract.contractSyncPending);
 export const useContractMetadata = () => createSelectorHook()((state: RootState) => state.contract.metadata);
-export const useBuyTransaction = () => createSelectorHook()((state: RootState) => state.contract.pendingTransactions["buy"])
+export const useMintTransaction = () => createSelectorHook()((state: RootState) => state.contract.pendingTransactions["buy"])
 export const useTokenTransaction = (token: ContractToken) => createSelectorHook()((state: RootState) => state.contract.pendingTransactions[`token.${token.id}`])
 export default reducer;
