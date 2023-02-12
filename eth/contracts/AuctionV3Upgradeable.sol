@@ -397,8 +397,6 @@ contract AuctionV3Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     * Withdraw all the ETH stored inside the contract to the owner wallet
     */
     function withdraw() public onlyOwner {
-        require(publicMintStopped, "Public mint is still ongoing.");
-
         uint256 balance = address(this).balance;
         require(balance > 0, "The contract contains no ETH to withdraw");
         payable(_msgSender()).transfer(address(this).balance);
@@ -408,8 +406,6 @@ contract AuctionV3Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     * Transfer the LINK of this contract to the owner wallet
     */
     function withdrawLink() public onlyOwner {
-        require(publicMintStopped, "Public mint is still ongoing.");
-
         LinkTokenInterface link = LinkTokenInterface(LINK);
         uint256 balance = link.balanceOf(address(this));
         require(balance > 0, "The contract contains no LINK to withdraw");
