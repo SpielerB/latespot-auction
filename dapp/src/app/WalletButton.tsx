@@ -50,12 +50,12 @@ const ConnectWalletButton = ({mobile}: ButtonProps) => {
     );
 }
 
-const BuyTicketsButton = ({mobile}: ButtonProps) => {
+const MintTokenButton = ({mobile}: ButtonProps) => {
     const dispatch = useAppDispatch();
 
     return (
         <button className={buttonClassNames(mobile)} onClick={() => dispatch(openModal(ModalTarget.AUCTION))}>
-            Buy Tickets
+            Mint Token
         </button>
     );
 }
@@ -79,8 +79,7 @@ const WalletButton = ({portalElement, mobile}: WalletButtonProps) => {
         case DisplayState.PRIVATE_MINT:
         case DisplayState.PRE_PUBLIC_MINT:
         case DisplayState.PUBLIC_MINT:
-        case DisplayState.OBSOLETE:
-            button = <BuyTicketsButton mobile={mobile}/>;
+            button = <MintTokenButton mobile={mobile}/>;
             break;
         case DisplayState.PRE_REVEAL:
         case DisplayState.STAKING:
