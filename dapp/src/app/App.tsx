@@ -37,12 +37,6 @@ const ModalContent = () => {
                 auction={contractModel?.publicMint}
                 title="Public sale"
             />;
-        case DisplayState.OBSOLETE:
-            return <AuctionPage
-                phase={2}
-                auction={contractModel?.publicMint}
-                title="We are sold out!"
-            />;
         case DisplayState.PRE_REVEAL:
         case DisplayState.STAKING:
             return <Staking/>;
