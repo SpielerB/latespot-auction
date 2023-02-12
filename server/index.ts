@@ -29,10 +29,11 @@ app.use(helmet());
 app.use(bodyParser.json());
 
 app.use(cors()); // Allow cors
-app.use(morgan('combined')); // Log requests
+morgan.token('remote-addr', (req) => JSON.stringify(req.headers['x-real-ip'] || req.headers['x-forwarded-for'] || req.socket.remoteAddress));
+
+app.use(morgan("[:date[iso]] HTTP/:http-version :method :url :status - :remote-addr - :response-time ms - :user-agent")); // Log requests
 
 let mintPhase: "NONE" | "PRIVATE" | "PRE_PUBLIC" | "PUBLIC" | "FINISHED" = "NONE";
-
 
 const syncContract = async () => {
     try {
@@ -61,6 +62,8 @@ const syncContract = async () => {
             console.error("Contract returned bad data.");
         } else if (error?.code === "ECONNREFUSED") {
             console.error("Connection to provider failed");
+        } else if (error?.code === "CALL_EXCEPTION") {
+            console.error("Unable to call contract");
         } else {
             console.error("An error occurred while loading the contract ready state:", error);
         }
