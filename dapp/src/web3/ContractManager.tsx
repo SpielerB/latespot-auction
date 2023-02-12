@@ -1,4 +1,4 @@
-import {setContractState, useDisplayState} from '../store/application/ApplicationReducer';
+import {setDisplayState, useDisplayState} from '../store/application/ApplicationReducer';
 import {useAppDispatch} from '../store/Store';
 import {useCallback, useEffect} from 'react';
 import DisplayState from '../model/DisplayState';
@@ -46,10 +46,10 @@ const ContractManager = () => {
 
     useEffect(() => {
         if ((account.isConnecting || account.isReconnecting || account.isDisconnected || !account.isConnected) && contractState !== DisplayState.DISCONNECTED) {
-            dispatch(setContractState(DisplayState.DISCONNECTED));
+            dispatch(setDisplayState(DisplayState.DISCONNECTED));
         }
         if (account.isConnected && !account.isReconnecting && contractState === DisplayState.DISCONNECTED) {
-            dispatch(setContractState(DisplayState.PRE_MINT));
+            dispatch(setDisplayState(DisplayState.PRE_MINT));
             dispatch(syncContractMetadata());
         }
     }, [account, contractState])

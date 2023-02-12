@@ -5,7 +5,7 @@ import Contract from '../../model/Contract';
 import {BigNumber, Contract as EthersContract, ContractTransaction} from 'ethers'
 import {deepEqual} from 'wagmi';
 import DisplayState from '../../model/DisplayState';
-import {setContractState} from '../application/ApplicationReducer';
+import {setDisplayState} from '../application/ApplicationReducer';
 import ContractState from '../../model/ContractState';
 import ContractMetadata from '../../model/ContractMetadata';
 import TokenMetadata from '../../model/TokenMetadata';
@@ -16,7 +16,7 @@ let syncedContract: EthersContract | undefined | null;
 type WatchTransaction =
     {
         transaction: Promise<ContractTransaction>,
-        type: "buy"
+        type: "mint"
     } | {
     transaction: Promise<ContractTransaction>,
     type: "stake" | "unstake",
@@ -28,8 +28,8 @@ const getTransactionKey = (args: WatchTransaction) => {
         case 'stake':
         case 'unstake':
             return `token.${args.token.id}`;
-        case 'buy':
-            return "buy";
+        case 'mint':
+            return "mint";
     }
     return "unknown";
 }
@@ -82,7 +82,7 @@ export const syncContractModel = createAsyncThunk<Contract | undefined, void, { 
             applicationState = DisplayState.STAKING;
         }
         if (applicationState !== currentApplicationState) {
-            thunkAPI.dispatch(setContractState(applicationState));
+            thunkAPI.dispatch(setDisplayState(applicationState));
         }
         return updatedContractModel;
     }
@@ -125,7 +125,7 @@ export const syncContractMetadata = createAsyncThunk<void, void, { state: RootSt
     if (!deepEqual(remoteMetadata, localMetadata)) {
         thunkAPI.dispatch(updateContractMetadata(remoteMetadata));
         if (localMetadata.started && !remoteMetadata.started) {
-            thunkAPI.dispatch(setContractState(DisplayState.PRE_MINT));
+            thunkAPI.dispatch(setDisplayState(DisplayState.PRE_MINT));
         }
     }
 });
@@ -242,7 +242,7 @@ export const unStake = createAsyncThunk<void, ContractToken, { state: RootState 
 
 export const mint = createAsyncThunk<void, number, { state: RootState }>("contract/function/mint", async (tokenCount, thunkAPI) => {
     if (!syncedContract) throw "No contract available. Please try again later.";
-    if (tokenCount <= 0) throw "You must buy at least one token";
+    if (tokenCount <= 0) throw "You must mint at least one token";
     const model = thunkAPI.getState().contract.contractModel;
     if (!model) throw "Local contract model is empty. Please try again later.";
 
@@ -273,7 +273,7 @@ export const mint = createAsyncThunk<void, number, { state: RootState }>("contra
     } else {
         transactionPromise = syncedContract.publicMint(signature, {value});
     }
-    thunkAPI.dispatch(watchTransaction({transaction: transactionPromise, type: "buy"}))
+    thunkAPI.dispatch(watchTransaction({transaction: transactionPromise, type: "mint"}))
 })
 
 const reducer = createReducer(initialState, builder => {
@@ -365,6 +365,6 @@ export const useRawTokensSyncPending = () => createSelectorHook()((state: RootSt
 export const useTokenMetadataSyncPending = (token: ContractToken) => createSelectorHook()((state: RootState) => state.contract.tokenMetadataSyncPending[token.id]);
 export const useContractSyncPending = () => createSelectorHook()((state: RootState) => state.contract.contractSyncPending);
 export const useContractMetadata = () => createSelectorHook()((state: RootState) => state.contract.metadata);
-export const useMintTransaction = () => createSelectorHook()((state: RootState) => state.contract.pendingTransactions["buy"])
+export const useMintTransaction = () => createSelectorHook()((state: RootState) => state.contract.pendingTransactions["mint"])
 export const useTokenTransaction = (token: ContractToken) => createSelectorHook()((state: RootState) => state.contract.pendingTransactions[`token.${token.id}`])
 export default reducer;

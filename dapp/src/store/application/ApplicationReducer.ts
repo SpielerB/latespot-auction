@@ -5,9 +5,9 @@ import DisplayState from '../../model/DisplayState';
 import ModalTarget from '../../model/ModalTarget';
 import ApplicationState from '../../model/ApplicationState';
 
-export const setContractState = createAction<DisplayState>("application/state/set");
-export const openModal = createAction<ModalTarget>("application/modal/open");
-export const closeModal = createAction("application/modal/close");
+export const setDisplayState = createAction<DisplayState>("display/state/set");
+export const openModal = createAction<ModalTarget>("modal/open");
+export const closeModal = createAction("modal/close");
 
 const initialState = {
     displayState: DisplayState.DISCONNECTED,
@@ -16,7 +16,7 @@ const initialState = {
 };
 
 const reducer = createReducer<ApplicationState>(initialState, builder => {
-    builder.addCase(setContractState, (state, action) => {
+    builder.addCase(setDisplayState, (state, action) => {
         state.displayState = action.payload;
     });
     builder.addCase(openModal, (state, action) => {
