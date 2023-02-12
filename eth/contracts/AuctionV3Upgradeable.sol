@@ -65,17 +65,17 @@ contract AuctionV3Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     uint256 public privateAuctionTicketCount;
     uint256 public privateAuctionTicketSupply;
     uint256 public privateAuctionTicketsPerWallet;
-    mapping(address => uint256) public privateAuctionTicketMap;
+    mapping(address => uint256) private privateAuctionTicketMap;
 
     event PublicMintStarted(uint256 _price, uint256 _supply, uint256 _tokensPerWallet);
 
-    bool public publicAuctionStarted;
-    bool public publicAuctionStopped;
-    uint256 public publicAuctionPrice;
-    uint256 public publicAuctionTicketCount;
-    uint256 public publicAuctionTicketSupply;
-    uint256 public publicAuctionTicketsPerWallet;
-    mapping(address => uint256) public publicAuctionTicketMap;
+    bool private publicAuctionStarted;
+    bool private publicAuctionStopped;
+    uint256 private publicAuctionPrice;
+    uint256 private publicAuctionTicketCount;
+    uint256 private publicAuctionTicketSupply;
+    uint256 private publicAuctionTicketsPerWallet;
+    mapping(address => uint256) private publicAuctionTicketMap;
 
     /*
         MintV2
@@ -197,35 +197,40 @@ contract AuctionV3Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     }
 
     /*
-    * Mint tokens while the private mint is active
+    * Mint tokens to wallet the private mint is active
     * Only whitelisted addresses may use this method
     */
-    function privateMint(bytes memory signature) public payable {
+    function privateMint() public payable {
+        _privateMint(_msgSender());
+    }
+
+
+    /*
+    * Mint tokens to wallet the private mint is active
+    * Only whitelisted addresses may use this method
+    */
+    function _privateMint(address wallet) private {
         // Basic check
         require(privateMintActive(), "Private mint is not active");
 
         // Whitelist check
-        require(_whitelistMap[_msgSender()], "Wallet is not whitelisted");
-
-        // Signature check
-        bytes32 hash = keccak256(abi.encode(_msgSender(), msg.value, "private")).toEthSignedMessageHash();
-        require(hash.recover(signature) == signatureAddress, "Invalid signature");
+        require(_whitelistMap[wallet], "Wallet is not whitelisted");
 
         // Value check
         require(msg.value > 0, "Value has to be greater than 0");
         require(msg.value % privateMintPrice == 0, "Value has to be a multiple of the price");
 
         uint256 tokensToMint = msg.value / privateMintPrice;
-        uint256 currentTokens = privateMintMap[_msgSender()];
+        uint256 currentTokens = privateMintMap[wallet];
 
         // Token amount check
         require(tokensToMint + currentTokens <= privateMintTokensPerWallet, "Total token count is higher than the max allowed tokens per wallet for the private mint");
         require(_privateMintTokenCounter.current() + tokensToMint <= privateMintSupply, "There are not enough tokens left in the private mint");
 
-        privateMintMap[_msgSender()] += tokensToMint;
+        privateMintMap[wallet] += tokensToMint;
 
         for (uint256 i = 0; i < tokensToMint; ++i) {
-            _mint(_msgSender(), _tokenCounter.current() + 1);
+            _mint(wallet, _tokenCounter.current() + 1);
             _tokenCounter.increment();
             _privateMintTokenCounter.increment();
         }
@@ -288,29 +293,32 @@ contract AuctionV3Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     /*
     * Mint tokens while the public mint is active
     */
-    function publicMint(bytes memory signature) public payable {
+    function publicMint() public payable {
+        _publicMint(_msgSender());
+    }
+
+    /*
+    * Mint tokens to wallet while the public mint is active
+    */
+    function _publicMint(address wallet) private {
         // Basic check
         require(publicMintActive(), "Public mint is not active");
-
-        // Signature check
-        bytes32 hash = keccak256(abi.encode(_msgSender(), msg.value, "public")).toEthSignedMessageHash();
-        require(hash.recover(signature) == signatureAddress, "Invalid signature");
 
         // Value check
         require(msg.value > 0, "Value has to be greater than 0");
         require(msg.value % publicMintPrice == 0, "Value has to be a multiple of the price");
 
         uint256 tokensToMint = msg.value / publicMintPrice;
-        uint256 currentTokens = publicMintMap[_msgSender()];
+        uint256 currentTokens = publicMintMap[wallet];
 
         // Token amount check
         require(tokensToMint + currentTokens <= publicMintTokensPerWallet, "Total token count is higher than the max allowed tokens per wallet for the public mint");
         require(_publicMintTokenCounter.current() + tokensToMint <= publicMintSupply, "There are not enough tokens left in the public mint");
 
-        publicMintMap[_msgSender()] += tokensToMint;
+        publicMintMap[wallet] += tokensToMint;
 
         for (uint256 i = 0; i < tokensToMint; ++i) {
-            _mint(_msgSender(), _tokenCounter.current() + 1);
+            _mint(wallet, _tokenCounter.current() + 1);
             _tokenCounter.increment();
             _publicMintTokenCounter.increment();
         }
@@ -347,6 +355,19 @@ contract AuctionV3Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     }
 
     /*
+    * Mint a token for a different wallet, used by crossmint
+    */
+    function mintFor(address wallet) public payable {
+        if (privateMintActive()) {
+            _privateMint(wallet);
+        } else if (publicMintActive()) {
+            _publicMint(wallet);
+        } else {
+            revert("No mint active");
+        }
+    }
+
+    /*
     * Returns the total of tokens minted by the sender wallet
     */
     function mintedTokenCount() public view returns (uint256) {
@@ -376,8 +397,8 @@ contract AuctionV3Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
     * Requests randomness from the oracle
     */
     function requestReveal(string memory realURI_) public onlyOwner {
+        require(publicMintStopped, "Metadata may not be revealed until public mint is over");
         require(!revealed, "Metadata has already been revealed");
-        require(_definedStakeLevels.length > 0, "Tokens may not be revealed until staking levels are defined");
 
         __realURI = realURI_;
         revealVrfRequestId = requestRandomness(callbackGasLimit, requestConfirmations, numWords);
@@ -409,7 +430,7 @@ contract AuctionV3Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
         LinkTokenInterface link = LinkTokenInterface(LINK);
         uint256 balance = link.balanceOf(address(this));
         require(balance > 0, "The contract contains no LINK to withdraw");
-        require(link.transfer(msg.sender, balance), "Unable to withdraw LINK");
+        require(link.transfer(_msgSender(), balance), "Unable to withdraw LINK");
     }
 
     /*
@@ -429,6 +450,16 @@ contract AuctionV3Upgradeable is ERC721Upgradeable, OwnableUpgradeable, VRFV2Wra
             ownedTokens[i] = possibleOwnedTokens[i];
         }
         return ownedTokens;
+    }
+
+    /*
+       Return the metadata URI of the given token
+    */
+    function tokenURI(uint256 tokenId) public view override(ERC721Upgradeable) returns (string memory){
+        if (!revealed) return __baseURI;
+        uint256 offset = seed % totalSupply();
+        uint256 metaId = ((tokenId + offset) % totalSupply()) + 1;
+        return string.concat(__realURI, '/', metaId.toString(), '.json');
     }
 
     /*
