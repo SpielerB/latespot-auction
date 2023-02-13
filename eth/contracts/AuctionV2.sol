@@ -379,15 +379,20 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
     /*
     * Returns a boolean indicating if the token is currently staked
     */
-    function tokens() public returns (uint256[] memory) {
-        uint256[] memory tokens;
+    function tokens() public view returns (uint256[] memory) {
+        uint256[] memory possibleOwnedTokens = new uint256[](_tokenCounter.current());
         uint256 index = 0;
-        for (uint256 i = 0; i < totalSupply(); ++i) {
+        for (uint256 i = 1; i <= _tokenCounter.current(); ++i) {
             if (ownerOf(i) == _msgSender() || _stakeOwnerMap[i] == _msgSender()) {
-                tokens[index++] = i;
+                possibleOwnedTokens[index++] = i;
             }
         }
-        return tokens;
+        // Copy token ids to correct sized array
+        uint256[] memory ownedTokens = new uint256[](index);
+        for (uint256 i = 0; i < index; ++i) {
+            ownedTokens[i] = possibleOwnedTokens[i];
+        }
+        return ownedTokens;
     }
 
     /*
@@ -409,25 +414,25 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
     }
 
     function stakeTime(uint256 token) public view returns (uint256) {
-        uint256 stakeTime = _stakeLevelTimeMap[token];
-        if (stakeTime == 0 && _stakeStartTimeMap[token] > 0) {
-            stakeTime = block.timestamp - _stakeStartTimeMap[token];
+        uint256 stakeLevelTime = _stakeLevelTimeMap[token];
+        if (stakeLevelTime == 0 && _stakeStartTimeMap[token] > 0) {
+            stakeLevelTime = block.timestamp - _stakeStartTimeMap[token];
         }
-        return stakeTime;
+        return stakeLevelTime;
     }
 
     /*
     * Returns the stake level for the given token
     */
     function stakeLevel(uint256 token) public view returns (uint256) {
-        uint256 stakeTime = _stakeLevelTimeMap[token];
-        if (stakeTime == 0 && _stakeStartTimeMap[token] > 0) {
-            stakeTime = block.timestamp - _stakeStartTimeMap[token];
+        uint256 stakeLevelTime = _stakeLevelTimeMap[token];
+        if (stakeLevelTime == 0 && _stakeStartTimeMap[token] > 0) {
+            stakeLevelTime = block.timestamp - _stakeStartTimeMap[token];
         }
 
         uint256 level = 0;
         for (uint256 i = 0; i < _definedStakeLevels.length; ++i) {
-            if (stakeTime < _definedStakeLevels[i]) {
+            if (stakeLevelTime < _definedStakeLevels[i]) {
                 break;
             }
             level = i + 1;
@@ -439,7 +444,7 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
         if (!revealed) return __baseURI;
         uint256 level = stakeLevel(tokenId);
         uint256 offset = seed % totalSupply();
-        uint256 metaId = (tokenId + offset) % totalSupply();
+        uint256 metaId = ((tokenId + offset) % totalSupply()) + 1;
         return string.concat(__realURI, '/', metaId.toString(), '_', level.toString(), '.json');
     }
 
@@ -464,7 +469,7 @@ contract AuctionV2 is ERC721, ERC721Royalty, Ownable, RoyaltiesV2, VRFConsumerBa
     /*
        compatibility functions
     */
-    function _burn(uint256 tokenId) internal override(ERC721, ERC721Royalty) {
+    function _burn(uint256) internal pure override(ERC721, ERC721Royalty) {
         revert("Burning is not allowed");
     }
 
