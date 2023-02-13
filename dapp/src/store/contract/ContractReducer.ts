@@ -51,6 +51,7 @@ export const updateContractSyncLoop = createAsyncThunk<void, EthersContract | un
     if (contractSyncing && syncedContract === contract) return;
     console.log("Contract changed:", contract)
     syncedContract = contract;
+    thunkAPI.dispatch(syncContractModel());
 
     if (!contractSyncing) {
         console.log("Starting contract sync...")
@@ -67,7 +68,11 @@ export const updateContractSyncLoop = createAsyncThunk<void, EthersContract | un
                 setTimeout(syncContractLoop, 10000);
             }
         };
-        await syncContractLoop();
+        if (syncedContract) {
+            setTimeout(syncContractLoop, 5000);
+        } else {
+            setTimeout(syncContractLoop, 10000);
+        }
     }
 });
 
@@ -131,9 +136,9 @@ export const mint = createAsyncThunk<void, number, { state: RootState }>("contra
     try {
         let transactionPromise;
         if (isPrivateMintActive) {
-            transactionPromise = syncedContract.privateMint({value});
+            transactionPromise = syncedContract.privateMint(tokenCount, {value});
         } else {
-            transactionPromise = syncedContract.publicMint({value});
+            transactionPromise = syncedContract.publicMint(tokenCount, {value});
         }
 
         const tx = await transactionPromise;
