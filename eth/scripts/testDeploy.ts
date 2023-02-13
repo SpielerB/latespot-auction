@@ -21,6 +21,7 @@ interface DeployContract {
     dependsOn?: string[];
     upgrade?: boolean;
     upgradeAddress?: string;
+    onSuccess?: (contract: Contract) => Promise<void>;
 }
 
 type ContractData = DeployContract | ((dependingContracts: DependencyObject) => DeployContract);
@@ -84,15 +85,19 @@ async function main() {
             proxy: true,
             params: () => [],
             upgrade: true,
-            upgradeAddress: AuctionV2Upgradeable.address
+            upgradeAddress: AuctionV2Upgradeable.address,
+            onSuccess: async (contract) => {
+                console.info("Initializing AuctionV3Upgradeable");
+                await contract.initializeV3("0x37Fd0C55655842631ca6d248FE2120b77F87Bf69", owner.address);
+            }
         }),
     ];
 
-    console.log(`Deploying contracts on network '${network.name}'`)
+    console.info(`Deploying contracts on network '${network.name}'`)
     const {price} = (await (await fetch('https://api.binance.com/api/v3/avgPrice?symbol=ETHBUSD')).json()) as any
     const {result: {ProposeGasPrice}} = (await (await fetch("https://api.etherscan.io/api?module=gastracker&action=gasoracle&apikey=CUU9ZE65KAS27K71PQPIAHRTTQG9781B8J")).json());
     const gasPrice = ProposeGasPrice * 1e9;
-    console.log(`Current ETH price: ${price} BUSD`)
+    console.info(`Current ETH price: ${price} BUSD`)
     const deployed: { [key: string]: Contract } = {};
     for (const deployData of contracts) {
         const {
@@ -100,7 +105,8 @@ async function main() {
             proxy,
             upgrade,
             upgradeAddress,
-            params
+            params,
+            onSuccess
         } = typeof deployData !== "function" ? deployData : deployData(deployed);
         const factory = await ethers.getContractFactory(name, owner);
         let contract;
@@ -110,32 +116,35 @@ async function main() {
                     console.error("Missing upgradeAddress parameter to upgrade contract");
                     continue;
                 }
-                console.log(`Upgrading ${name}`);
-                contract = await upgrades.upgradeProxy(upgradeAddress, factory);
+                console.info(`Upgrading ${name}`);
+                contract = await upgrades.upgradeProxy(upgradeAddress, factory, {});
             } else {
-                console.log(`Deploying ${name}`);
+                console.info(`Deploying ${name}`);
                 contract = await upgrades.deployProxy(factory, params(deployed));
             }
         } else {
-            console.log(`Deploying ${name}`);
+            console.info(`Deploying ${name}`);
             contract = await factory.deploy(...params(deployed));
         }
 
         await contract.deployed();
         const tx = await contract.deployTransaction.wait();
+
+        onSuccess && await onSuccess(contract);
+
         const gasCost = ethers.utils.formatEther(`${tx.gasUsed.mul(gasPrice)}`);
 
         if (upgrade) {
-            console.log(`Contract ${name} (${contract.address}) has been upgraded. (Costs ${gasCost} ETH or ${(+gasCost * price).toFixed(2)} BUSD)`);
+            console.info(`Contract ${name} (${contract.address}) has been upgraded. (Costs ${gasCost} ETH or ${(+gasCost * price).toFixed(2)} BUSD)`);
         } else {
-            console.log(`Contract ${name} deployed to ${contract.address}. (Costs ${gasCost} ETH or ${(+gasCost * price).toFixed(2)} BUSD)`);
+            console.info(`Contract ${name} deployed to ${contract.address}. (Costs ${gasCost} ETH or ${(+gasCost * price).toFixed(2)} BUSD)`);
         }
 
         if (appDir) {
-            console.log("Loading contract abi");
+            console.info("Loading contract abi");
             const rawContractMetadata = fs.readFileSync(`${appDir}/../artifacts/contracts/${name}.sol/${name}.json`);
             const {abi} = JSON.parse(rawContractMetadata.toString());
-            console.log("Saving contract metadata");
+            console.info("Saving contract metadata");
             fs.mkdirSync(`${appDir}/../../server/contract/`, {recursive: true});
             fs.mkdirSync(`${appDir}/../../dapp/src/contract/`, {recursive: true});
             fs.mkdirSync(`${appDir}/contract/`, {recursive: true});
