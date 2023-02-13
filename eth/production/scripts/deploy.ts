@@ -6,6 +6,8 @@ import {ensureEnv, verify} from './helper/productionScript';
 import {ethers, run, upgrades} from 'hardhat';
 
 async function main() {
+    const contractName = "AuctionV2Upgradeable";
+    
     const ownerWallet = new Wallet(ensureEnv("CONTRACT_OWNER_PRIVATE_KEY"), ethers.provider);
     const signerWallet = new Wallet(ensureEnv("CONTRACT_SIGNER_PRIVATE_KEY"), ethers.provider);
     const parameters = {
@@ -17,7 +19,7 @@ async function main() {
         linkAddress: ensureEnv("CONTRACT_PARAMETER_LINK_ADDRESS"),
         wrapperAddress: ensureEnv("CONTRACT_PARAMETER_WRAPPER_ADDRESS")
     }
-    console.warn("You are about to deploy this contract with the following parameters:");
+    console.warn(`You are about to deploy the ${contractName} contract with the following parameters:`);
     console.log(`\towner => ${ownerWallet.address}`);
     for (const key of Object.keys(parameters)) {
         console.log(`\t${key} => ${(parameters as any)[key]}`)
@@ -33,7 +35,7 @@ async function main() {
     }
     console.info("Deploying contract...");
 
-    const factory = await ethers.getContractFactory("AuctionV2Upgradeable", ownerWallet);
+    const factory = await ethers.getContractFactory(contractName, ownerWallet);
     const contract = await upgrades.deployProxy(factory, [
         parameters.tokenName,
         parameters.tokenSymbol,
