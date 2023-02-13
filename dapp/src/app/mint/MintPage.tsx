@@ -8,6 +8,7 @@ import InfoDialog from "../InfoDialog";
 import Mint from "../../model/Mint";
 import MintButton from './MintButton';
 import CrossMintButton from './CrossMintButton';
+import {useAccount} from "wagmi";
 
 
 interface AuctionProps {
@@ -151,7 +152,7 @@ const MintSalesForm = (props: SalesProps) => {
                         onMint={() => setShowInfo(true)}
                         mintDisabled={!isEligible || mintPending}
                     />
-                    <div hidden={!isEligible} className="mint-button-spacer">OR</div>
+                    <div hidden={!isEligible} className="mint-button-spacer">or</div>
                     <CrossMintButton
                         amount={amount}
                         hidden={!isEligible}
@@ -211,6 +212,7 @@ const MintSalesForm = (props: SalesProps) => {
 }
 const MintPage = (props: AuctionProps) => {
     const walletAddress = useAddress();
+    const {isConnected} = useAccount();
 
     return (
         <div className="mint-section">
@@ -219,10 +221,22 @@ const MintPage = (props: AuctionProps) => {
                 <MintSalesForm phase={props.phase} auction={props.auction}/>
             </div>
             <div className="mint-line"/>
-
-            <div className="mint-wallet">
-                <div className="mint-wallet-p"><h3 className="mint-h3">CONNECTED WALLET: </h3>{walletAddress}</div>
-            </div>
+            {isConnected &&
+                <div className="mint-wallet">
+                    <div className="mint-wallet-p">
+                        <h3 className="mint-h3">CONNECTED WALLET: </h3>
+                        {walletAddress}
+                    </div>
+                </div>
+            }
+            {!isConnected &&
+                <div className="mint-wallet">
+                    <div className="mint-wallet-p">
+                        <h3 className="mint-mint-h3">No wallet connected </h3>
+                        {walletAddress}
+                    </div>
+                </div>
+            }
         </div>);
 }
 export default MintPage;
