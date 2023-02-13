@@ -22,32 +22,32 @@ const ModalContent = () => {
             // TODO: Add actual page
             return <MintPage
                 phase={0}
-                auction={undefined}
+                mint={undefined}
                 title="Pre Mint"
             />;
         case DisplayState.PRIVATE_MINT:
             return <MintPage
                 phase={1}
-                auction={contractModel?.privateMint}
+                mint={contractModel?.privateMint}
                 title="Whitelist Mint"
             />;
         case DisplayState.PRE_PUBLIC_MINT:
             return <MintPage
                 phase={1}
-                auction={contractModel?.privateMint}
-                title="All Whitelist Tokens Minted!"
+                mint={contractModel?.privateMint}
+                title="All wl Tokens Minted!"
             />;
         case DisplayState.PUBLIC_MINT:
             return <MintPage
                 phase={2}
-                auction={contractModel?.publicMint}
+                mint={contractModel?.publicMint}
                 title="Public Mint"
             />;
         case DisplayState.MINT_FINISHED:
             // TODO: Add actual page
             return <MintPage
                 phase={3}
-                auction={contractModel?.publicMint}
+                mint={contractModel?.publicMint}
                 title="All Tokens Minted!"
             />;
         default:
