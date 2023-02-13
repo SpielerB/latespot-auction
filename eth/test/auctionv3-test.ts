@@ -18,6 +18,11 @@ interface InitParams {
     chainLinkKeyHash: string;
 }
 
+interface InitV3Params {
+    crossmintWallet: string;
+    royaltiesRecipient: string;
+}
+
 interface PrivateMintParams {
     price: BigNumber;
     supply: BigNumber;
@@ -49,6 +54,14 @@ const defaultInitParams = async (): Promise<InitParams> => {
         linkToken: '0x6168499c0cFfCaCD319c818142124B7A15E857ab',
         chainLinkSubscriptionId: 42,
         chainLinkKeyHash: "0xd89b2bf150e3b9e13446986e571fb9cab24b13cea0a43ea20a6049a85cc807cc"
+    };
+}
+
+const defaultInitV3Params = async (): Promise<InitV3Params> => {
+    const [owner] = await ethers.getSigners();
+    return {
+        crossmintWallet: "0xdab1a1854214684ace522439684a145e62505233",
+        royaltiesRecipient: owner.address
     };
 }
 
@@ -89,18 +102,23 @@ const deployAuctionV2Proxy = async (overrides?: Partial<InitParams>) => {
         overrides?.vrfWrapper || defaultParams.vrfWrapper);
 };
 
-const upgradeContractV2ToV3 = async (address: string) => {
-    return await upgradeProxy(address, "AuctionV3Upgradeable");
+const upgradeContractV2ToV3 = async (address: string, v3overrides?: Partial<InitV3Params>) => {
+    const defaultParams = await defaultInitV3Params();
+    const contract = await upgradeProxy(address, "AuctionV3Upgradeable");
+    await contract.initializeV3(
+        wrapParam(v3overrides?.crossmintWallet, defaultParams.crossmintWallet),
+        wrapParam(v3overrides?.royaltiesRecipient, defaultParams.royaltiesRecipient)
+    );
+    return contract;
 };
 
-const deployAuctionProxy = async (overrides?: Partial<InitParams>) => {
+const deployAuctionProxy = async (overrides?: Partial<InitParams>, v3overrides?: Partial<InitV3Params>) => {
     const contract = await deployAuctionV2Proxy(overrides);
-    return await upgradeContractV2ToV3(contract.address);
+    return await upgradeContractV2ToV3(contract.address, v3overrides);
 };
 
 const wrapParam = <T>(value: T | undefined, fallback: T) => {
-    if (value === undefined) return fallback;
-    return value;
+    return value ?? fallback;
 }
 
 const getWhitelistedSigners = async () => (await ethers.getSigners()).filter((_, i) => i % 2 === 0);
@@ -122,8 +140,10 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
             return tx;
         }
 
-        const privateMint = async (value: BigNumberish) => {
-            const tx: ContractTransaction = await contract.privateMint({value});
+        const privateMint = async (count: number, valueOverride?: BigNumberish) => {
+            const price = await contract.privateMintPrice();
+            const value = valueOverride ?? price.mul(count);
+            const tx: ContractTransaction = await contract.privateMint(count, {value});
             await tx.wait(); // Wait for the block to be mined to ensure that the transaction has either been rejected or went through
             return tx;
         }
@@ -145,9 +165,10 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
             return tx;
         }
 
-        const publicMint = async (value: BigNumberish) => {
-
-            const tx: ContractTransaction = await contract.publicMint({value});
+        const publicMint = async (count: number, valueOverride?: BigNumberish) => {
+            const price = await contract.publicMintPrice();
+            const value = valueOverride ?? price.mul(count);
+            const tx: ContractTransaction = await contract.publicMint(count, {value});
             await tx.wait(); // Wait for the block to be mined to ensure that the transaction has either been rejected or went through
             return tx;
         }
@@ -406,49 +427,45 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
             });
             describe('privateMint', async () => {
                 it('Should mint the requested amount of tokens', async () => {
-                    const price = (await defaultPrivateMintParams()).price;
                     const [wallet] = await ethers.getSigners();
                     await setBalance(wallet.address, ethers.utils.parseEther("10000"));
                     await startPrivateMint({tokensPerWallet: 5});
-                    await privateMint(price);
+                    await privateMint(1);
                     expect(await contract.privateMintTokens()).to.equal(1);
                     expect(await contract.privateMintTokensOf(wallet.address)).to.equal(1);
                     expect(await contract.balanceOf(wallet.address)).to.equal(1);
-                    await privateMint(price.mul(3));
+                    await privateMint(3);
                     expect(await contract.privateMintTokens()).to.equal(4);
                     expect(await contract.privateMintTokensOf(wallet.address)).to.equal(4);
                     expect(await contract.balanceOf(wallet.address)).to.equal(4);
                 });
 
                 it('Should not allow to mint more than limit', async () => {
-                    const price = (await defaultPrivateMintParams()).price;
                     const [wallet] = await ethers.getSigners();
                     await setBalance(wallet.address, ethers.utils.parseEther("10000"));
                     await startPrivateMint({tokensPerWallet: 5});
-                    await expect(privateMint(price.mul(6))).to.be.revertedWith('Total token count is higher than the max allowed tokens per wallet for the private mint');
-                    await privateMint(price.mul(3));
-                    await expect(privateMint(price.mul(3))).to.be.revertedWith('Total token count is higher than the max allowed tokens per wallet for the private mint');
-                    await privateMint(price.mul(2));
-                    await expect(privateMint(price)).to.be.revertedWith('Total token count is higher than the max allowed tokens per wallet for the private mint');
+                    await expect(privateMint(6)).to.be.revertedWith('Total token count is higher than the max allowed tokens per wallet for the private mint');
+                    await privateMint(3);
+                    await expect(privateMint(3)).to.be.revertedWith('Total token count is higher than the max allowed tokens per wallet for the private mint');
+                    await privateMint(2);
+                    await expect(privateMint(1)).to.be.revertedWith('Total token count is higher than the max allowed tokens per wallet for the private mint');
                 });
 
                 it('Should not allow to mint over supply', async () => {
-                    const price = (await defaultPrivateMintParams()).price;
                     const [wallet] = await ethers.getSigners();
                     await setBalance(wallet.address, ethers.utils.parseEther("10000"));
                     await startPrivateMint({supply: BigNumber.from(2), tokensPerWallet: 5});
-                    await expect(privateMint(price.mul(3))).to.be.revertedWith('There are not enough tokens left in the private mint');
-                    await privateMint(price.mul(2));
-                    await expect(privateMint(price)).to.be.revertedWith('Private mint is not active');
+                    await expect(privateMint(3)).to.be.revertedWith('There are not enough tokens left in the private mint');
+                    await privateMint(2);
+                    await expect(privateMint(1)).to.be.revertedWith('Private mint is not active');
                 });
 
                 it('Should not allow to mint after stopped', async () => {
-                    const price = (await defaultPrivateMintParams()).price;
                     const [wallet] = await ethers.getSigners();
                     await setBalance(wallet.address, ethers.utils.parseEther("10000"));
                     await startPrivateMint();
                     await stopPrivateMint();
-                    await expect(privateMint(price)).to.be.revertedWith('Private mint is not active');
+                    await expect(privateMint(1)).to.be.revertedWith('Private mint is not active');
                 });
 
                 it('Should not allow wrong price', async () => {
@@ -456,17 +473,25 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
                     const [wallet] = await ethers.getSigners();
                     await setBalance(wallet.address, ethers.utils.parseEther("10000"));
                     await startPrivateMint();
-                    await expect(privateMint(price.add(1))).to.be.revertedWith('Value has to be a multiple of the price');
-                    await expect(privateMint(price.sub(1))).to.be.revertedWith('Value has to be a multiple of the price');
-                    await expect(privateMint(0)).to.be.revertedWith('Value has to be greater than 0');
+                    await expect(privateMint(1, price.add(1))).to.be.revertedWith('Value has to be a multiple of the price');
+                    await expect(privateMint(1, price.sub(1))).to.be.revertedWith('Value has to be a multiple of the price');
+                    await expect(privateMint(1, 0)).to.be.revertedWith('Value has to be greater than 0');
                 });
 
-                it('Should mint correct amount of tokens', async () => {
+                it('Should not allow wrong count', async () => {
                     const price = (await defaultPrivateMintParams()).price;
                     const [wallet] = await ethers.getSigners();
                     await setBalance(wallet.address, ethers.utils.parseEther("10000"));
                     await startPrivateMint();
-                    await privateMint(price.mul(2));
+                    await expect(privateMint(1, price.mul(2))).to.be.revertedWith('Given count does not match provided value');
+                    await expect(privateMint(0, price.sub(1))).to.be.revertedWith('At least 1 token has to be minted');
+                });
+
+                it('Should mint correct amount of tokens', async () => {
+                    const [wallet] = await ethers.getSigners();
+                    await setBalance(wallet.address, ethers.utils.parseEther("10000"));
+                    await startPrivateMint();
+                    await privateMint(2);
                     expect(await contract.balanceOf(wallet.address)).to.equal(2);
                 });
             });
@@ -528,55 +553,51 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
             });
             describe('publicMint', async () => {
                 it('Should mint the requested amount of tokens', async () => {
-                    const price = (await defaultPublicMintParams()).price;
                     const [wallet] = await ethers.getSigners();
                     await setBalance(wallet.address, ethers.utils.parseEther("10000"));
                     await startPrivateMint();
                     await stopPrivateMint();
                     await startPublicMint();
-                    await publicMint(price);
+                    await publicMint(1);
                     expect(await contract.publicMintTokens()).to.equal(1);
                     expect(await contract.balanceOf(wallet.address)).to.equal(1);
-                    await publicMint(price.mul(3));
+                    await publicMint(3);
                     expect(await contract.publicMintTokens()).to.equal(4);
                     expect(await contract.balanceOf(wallet.address)).to.equal(4);
                 });
 
                 it('Should not allow to mint more than limit', async () => {
-                    const price = (await defaultPublicMintParams()).price;
                     const [wallet] = await ethers.getSigners();
                     await setBalance(wallet.address, ethers.utils.parseEther("10000"));
                     await startPrivateMint();
                     await stopPrivateMint();
                     await startPublicMint();
-                    await expect(publicMint(price.mul(6))).to.be.revertedWith('Total token count is higher than the max allowed tokens per wallet for the public mint');
-                    await publicMint(price.mul(3));
-                    await expect(publicMint(price.mul(3))).to.be.revertedWith('Total token count is higher than the max allowed tokens per wallet for the public mint');
-                    await publicMint(price.mul(2));
-                    await expect(publicMint(price)).to.be.revertedWith('Total token count is higher than the max allowed tokens per wallet for the public mint');
+                    await expect(publicMint(6)).to.be.revertedWith('Total token count is higher than the max allowed tokens per wallet for the public mint');
+                    await publicMint(3);
+                    await expect(publicMint(3)).to.be.revertedWith('Total token count is higher than the max allowed tokens per wallet for the public mint');
+                    await publicMint(2);
+                    await expect(publicMint(1)).to.be.revertedWith('Total token count is higher than the max allowed tokens per wallet for the public mint');
                 });
 
                 it('Should not allow to mint over total', async () => {
-                    const price = (await defaultPublicMintParams()).price;
                     const [wallet] = await ethers.getSigners();
                     await setBalance(wallet.address, ethers.utils.parseEther("10000"));
                     await startPrivateMint();
                     await stopPrivateMint();
                     await startPublicMint({supply: BigNumber.from(2)});
-                    await expect(publicMint(price.mul(3))).to.be.revertedWith('There are not enough tokens left in the public mint');
-                    await publicMint(price.mul(2));
-                    await expect(publicMint(price)).to.be.revertedWith('Public mint is not active');
+                    await expect(publicMint(3)).to.be.revertedWith('There are not enough tokens left in the public mint');
+                    await publicMint(2);
+                    await expect(publicMint(1)).to.be.revertedWith('Public mint is not active');
                 });
 
                 it('Should not allow to mint after stopped', async () => {
-                    const price = (await defaultPublicMintParams()).price;
                     const [wallet] = await ethers.getSigners();
                     await setBalance(wallet.address, ethers.utils.parseEther("10000"));
                     await startPrivateMint();
                     await stopPrivateMint();
                     await startPublicMint();
                     await stopPublicMint();
-                    await expect(publicMint(price)).to.be.revertedWith('Public mint is not active');
+                    await expect(publicMint(1)).to.be.revertedWith('Public mint is not active');
                 });
 
                 it('Should not allow wrong price', async () => {
@@ -586,20 +607,31 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
                     await startPrivateMint();
                     await stopPrivateMint();
                     await startPublicMint();
-                    await expect(publicMint(price.add(1))).to.be.revertedWith('Value has to be a multiple of the price');
-                    await expect(publicMint(price.sub(1))).to.be.revertedWith('Value has to be a multiple of the price');
-                    await expect(publicMint(0)).to.be.revertedWith('Value has to be greater than 0');
+                    await expect(publicMint(1, price.add(1))).to.be.revertedWith('Value has to be a multiple of the price');
+                    await expect(publicMint(1, price.sub(1))).to.be.revertedWith('Value has to be a multiple of the price');
+                    await expect(publicMint(1, 0)).to.be.revertedWith('Value has to be greater than 0');
+                });
+
+
+                it('Should not allow wrong count', async () => {
+                    const price = (await defaultPublicMintParams()).price;
+                    const [wallet] = await ethers.getSigners();
+                    await setBalance(wallet.address, ethers.utils.parseEther("10000"));
+                    await startPrivateMint();
+                    await stopPrivateMint();
+                    await startPublicMint();
+                    await expect(publicMint(1, price.mul(2))).to.be.revertedWith('Given count does not match provided value');
+                    await expect(publicMint(0, price.sub(1))).to.be.revertedWith('At least 1 token has to be minted');
                 });
 
                 it('Should mint correct amount of tokens', async () => {
-                    const price = (await defaultPublicMintParams()).price;
                     const [wallet] = await ethers.getSigners();
                     await setBalance(wallet.address, ethers.utils.parseEther("10000"));
                     await startPrivateMint();
 
                     await stopPrivateMint();
                     await startPublicMint();
-                    await publicMint(price.mul(5));
+                    await publicMint(5);
                     expect(await contract.balanceOf(wallet.address)).to.equal(5);
                 });
             });
@@ -609,12 +641,25 @@ const contractTests = (name: string, deployAuction: (overrides?: Partial<InitPar
                     await startPrivateMint();
                     await stopPrivateMint();
                     await startPublicMint();
-                    await publicMint((await defaultPublicMintParams()).price)
                     await stopPublicMint();
                     expect(await contract.publicMintActive()).to.be.false;
                     expect(await contract.publicMintStarted()).to.be.true;
                     expect(await contract.publicMintStopped()).to.be.true;
                 });
+            });
+        });
+
+        context('crossmint', async () => {
+            it('Should only allow the crossmint wallet to mint using the crossmint method', async () => {
+                const [owner, wallet1] = await ethers.getSigners();
+                contract = await deployAuctionV2Proxy();
+                contract = await upgradeContractV2ToV3(contract.address, {crossmintWallet: owner.address});
+                await startPrivateMint({price: BigNumber.from(1)});
+                await contract.whitelist([owner.address]);
+                await contract.crossmint(owner.address, 1, {value: 1});
+                const walletContract = contract.connect(wallet1);
+                await expect(walletContract.crossmint(owner.address, 1, {value: 1})).to.be.revertedWith("Only the crossmint wallet may use this function");
+
             });
         });
 
