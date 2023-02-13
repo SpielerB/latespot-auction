@@ -153,6 +153,7 @@ const MintSalesForm = (props: SalesProps) => {
                     />
                     <div hidden={!isEligible} className="mint-button-spacer">OR</div>
                     <CrossMintButton
+                        amount={amount}
                         hidden={!isEligible}
                         etherPrice={ethers.utils.formatEther(price.mul(amount).toString())}
                         disabled={mintPending}

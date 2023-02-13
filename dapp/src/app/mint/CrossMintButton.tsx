@@ -6,11 +6,12 @@ import {useAccount} from '../../hooks/WalletHooks';
 
 interface CrossMintProps {
     etherPrice: string;
+    amount: number;
     disabled?: boolean;
     hidden?: boolean;
 }
 
-const CrossMintButton = ({etherPrice, disabled, hidden}: CrossMintProps) => {
+const CrossMintButton = ({etherPrice, amount, disabled, hidden}: CrossMintProps) => {
 
     const {address} = useAccount();
 
@@ -24,7 +25,8 @@ const CrossMintButton = ({etherPrice, disabled, hidden}: CrossMintProps) => {
             clientId={clientId}
             mintConfig={{
                 type: "erc-721",
-                totalPrice: etherPrice
+                totalPrice: etherPrice,
+                count_: amount
             }}
             environment={environment}
             mintTo={address}
