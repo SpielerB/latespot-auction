@@ -5,7 +5,7 @@ import {abi, address as localContractAddress} from '../contract/AuctionV3Upgrade
 export const useEtherContract = () => {
     useAccount();
     const signerOrProvider = useSigner();
-    const address = import.meta.env.VITE_CONTRACT_ADDRESS && localContractAddress;
+    const address = import.meta.env.VITE_CONTRACT_ADDRESS || localContractAddress;
     const contract = useWagmiContract({address, abi, signerOrProvider})
     return signerOrProvider ? contract : undefined;
 }
