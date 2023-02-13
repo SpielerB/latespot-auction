@@ -13,12 +13,12 @@ import {useAccount} from "wagmi";
 
 interface AuctionProps {
     phase: number;
-    auction?: Mint;
+    mint?: Mint;
     title: String;
 }
 
 interface SalesProps {
-    auction?: Mint;
+    mint?: Mint;
     phase: number;
 }
 
@@ -27,12 +27,12 @@ const MintHeader = (props: AuctionProps) => {
     const walletStatus = useWalletStatus();
     const tokenInWallet = contractModel?.balance ?? 0;
 
-    const tokenSold = props.auction?.tokensMinted ?? 0;
-    const tokenSupply = props.auction?.tokenSupply ?? 0;
+    const tokenSold = props.mint?.tokensMinted ?? 0;
+    const tokenSupply = props.mint?.tokenSupply ?? 0;
     const tokenStock = tokenSupply - tokenSold;
     const stockString = tokenStock.toLocaleString('de-CH');
 
-    const ethPrice = ethers.utils.formatEther(props.auction?.price ?? 0);
+    const ethPrice = ethers.utils.formatEther(props.mint?.price ?? 0);
 
     return (
         <div className="mint-header">
@@ -68,7 +68,7 @@ const MintSalesForm = (props: SalesProps) => {
     const [amount, setAmount] = useState<number>(1);
     const [showInfo, setShowInfo] = useState<boolean>(false);
     const [showError, setShowError] = useState<boolean>(false);
-    const price = BigNumber.from(props.auction?.price ?? "0");
+    const price = BigNumber.from(props.mint?.price ?? "0");
     const ethPrice = ethers.utils.formatEther(price);
     const totalPrice = (+ethers.utils.formatEther(price.mul(amount))).toLocaleString('de-CH', {
         minimumFractionDigits: 2,
@@ -76,9 +76,9 @@ const MintSalesForm = (props: SalesProps) => {
     });
 
     const isWhitelisted = contractModel?.whitelisted || contractModel?.publicMint.hasStarted;
-    const hasStopped = props.auction?.hasStopped ?? false;
-    const maxTokensPerWallet = props.auction?.tokenLimit ?? 0;
-    const tokenCount = props.auction?.walletTokens ?? 0;
+    const hasStopped = props.mint?.hasStopped ?? false;
+    const maxTokensPerWallet = props.mint?.tokenLimit ?? 0;
+    const tokenCount = props.mint?.walletTokens ?? 0;
     const maxToken = maxTokensPerWallet - tokenCount;
 
     let isEligible;
@@ -218,7 +218,7 @@ const MintPage = (props: AuctionProps) => {
         <div className="mint-section">
             <div className="mint-c">
                 <MintHeader {...props}/>
-                <MintSalesForm phase={props.phase} auction={props.auction}/>
+                <MintSalesForm phase={props.phase} mint={props.mint}/>
             </div>
             <div className="mint-line"/>
             {isConnected &&
