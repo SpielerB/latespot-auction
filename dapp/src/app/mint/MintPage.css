@@ -35,12 +35,7 @@
     display: inline;
 }
 
-.mint-buy-h4 {
-    color: #0cffcf;
-    width: 16.26em;
-}
-
-.mint-mint-h3 {
+.mint-mint {
     color: #0cffcf;
 }
 
@@ -63,8 +58,8 @@
 .mint-amount {
     color: #0cffcf;
     background-color: rgb(15, 15, 15);
-    padding-left: 1.8em;
-    border-left: 1.1em solid transparent;
+    padding-left: 2.1em;
+    border-left: 1.4em solid transparent;
 }
 
 .mint-amount:focus {
@@ -103,5 +98,5 @@
 }
 
 .mint-buy-amount-w {
-    width: initial;
+    width: 100%;
 }

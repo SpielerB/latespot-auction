@@ -132,7 +132,7 @@ const MintSalesForm = (props: SalesProps) => {
             <div className="mint-buy" aria-label="Mint Form">
                 <h3 className="mint-buy-h3">HOW MANY Tokens DO YOU WANT TO mint?</h3>
                 <div className="mint-buy-amount-w">
-                    <h4 className={isEligible ? "" : "mint-buy-h4"}>{selectText}</h4>
+                    <h4 className={isEligible ? "" : "mint-mint"}>{selectText}</h4>
                     <select
                         value={amount}
                         onChange={event => setAmount(+event.target.value)}
@@ -186,11 +186,11 @@ const MintSalesForm = (props: SalesProps) => {
                 onCancel={() => setShowInfo(false)}
             >
                 <div className="dialog-text">
-                    <h3 className="mint-mint-h3">You are about to mint {amount} token(s)</h3>
+                    <h3 className="mint-mint">You are about to mint {amount} token(s)</h3>
                     <p>Please take a minute and read the following information carefully.</p>
                 </div>
                 <div className="dialog-text">
-                    <h3 className="mint-mint-h3">Gas Price</h3>
+                    <h3 className="mint-mint">Gas Price</h3>
                     <p>In addition to the price of the token, a gas fee is added by the transaction
                         on the Blockchain. The gas fee is not controlled by us and is subject to change.
                         Websites like <a className="mint-link" href="https://etherscan.io/gastracker"
@@ -199,13 +199,13 @@ const MintSalesForm = (props: SalesProps) => {
                     </p>
                 </div>
                 <div className="dialog-text">
-                    <h3 className="mint-mint-h3">minting may take a while</h3>
+                    <h3 className="mint-mint">minting may take a while</h3>
                     <p>The minting process may take a couple of minutes to finish based on the current
                         network usage. Please be patient and wait for the tokens to arrive in your wallet.
                     </p>
                 </div>
                 <div className="dialog-text">
-                    <h3 className="mint-mint-h3">Confirmation</h3>
+                    <h3 className="mint-mint">Confirmation</h3>
                     <p>By clicking the "ACCEPT AND CONFIRM MINT" button, you confirm
                         that you have read and understood the presented information about the mint.</p>
                 </div>
@@ -244,7 +244,7 @@ const MintPage = (props: AuctionProps) => {
             {!isConnected &&
                 <div className="mint-wallet">
                     <div className="mint-wallet-p">
-                        <h3 className="mint-mint-h3">No wallet connected </h3>
+                        <h3 className="mint-mint">No wallet connected </h3>
                         {walletAddress}
                     </div>
                 </div>
