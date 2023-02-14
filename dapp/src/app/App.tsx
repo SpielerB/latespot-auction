@@ -22,7 +22,7 @@ const ModalContent = () => {
             return <MintPage
                 phase={0}
                 mint={undefined}
-                title="Pre Mint"
+                title="pre wl Mint "
             />;
         case DisplayState.PRIVATE_MINT:
             return <MintPage
