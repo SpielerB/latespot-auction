@@ -25,8 +25,10 @@ interface SalesProps {
 const MintHeader = (props: AuctionProps) => {
     const contractModel = useContractModel();
     const {isConnected} = useAccount();
-    const tokenInWallet = contractModel?.balance ?? 0;
 
+    const isWhitelisted = contractModel?.whitelisted || contractModel?.publicMint.hasStarted;
+
+    const tokenInWallet = contractModel?.balance ?? 0;
     const tokenSold = props.mint?.tokensMinted ?? 0;
     const tokenSupply = props.mint?.tokenSupply ?? 0;
     const tokenStock = tokenSupply - tokenSold;
@@ -38,7 +40,7 @@ const MintHeader = (props: AuctionProps) => {
         <div className="mint-header">
             <h4 className="mint-h4">phase #{props.phase}</h4>
             <h1 className="mint-h1">{props.title}</h1>
-            {isConnected &&
+            {isConnected && isWhitelisted &&
                 <div className="mint-mint-p">
                     You currently have {tokenInWallet} {tokenInWallet == 1 ? "token" : "tokens"}.
                 </div>
