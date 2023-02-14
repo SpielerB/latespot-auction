@@ -3,7 +3,7 @@ import "./MintPage.css"
 import {mint, useContractModel, useMintError, useMintPending,} from "../../store/contract/ContractReducer";
 import {useAppDispatch} from "../../store/Store";
 import {BigNumber, ethers} from "ethers";
-import {useAddress, useWalletStatus} from "../../hooks/WalletHooks";
+import {useAddress} from "../../hooks/WalletHooks";
 import InfoDialog from "../InfoDialog";
 import Mint from "../../model/Mint";
 import MintButton from './MintButton';
@@ -24,7 +24,7 @@ interface SalesProps {
 
 const MintHeader = (props: AuctionProps) => {
     const contractModel = useContractModel();
-    const walletStatus = useWalletStatus();
+    const {isConnected} = useAccount();
     const tokenInWallet = contractModel?.balance ?? 0;
 
     const tokenSold = props.mint?.tokensMinted ?? 0;
@@ -38,23 +38,26 @@ const MintHeader = (props: AuctionProps) => {
         <div className="mint-header">
             <h4 className="mint-h4">phase #{props.phase}</h4>
             <h1 className="mint-h1">{props.title}</h1>
-            {walletStatus === "connected" &&
+            {isConnected &&
                 <div className="mint-mint-p">
                     You currently have {tokenInWallet} {tokenInWallet == 1 ? "token" : "tokens"}.
                 </div>
             }
-            <h3 className="mint-h3">{stockString} Tokens LEFT </h3>
-            <div className="mint-live">
-                <img
-                    src="https://assets.website-files.com/621e34ea4b3095856cff1ff8/6226563ba9df1423307642dd_live-icon.svg"
-                    loading="lazy"
-                    alt=""
-                    className="mint-icon"
-                />
-                <div className="mint-live-p">
-                    Token Price: {ethPrice} $ETH
+            {!props.mint && <h3 className="mint-h3">Revealing token amount soon </h3>}
+            {props.mint && <h3 className="mint-h3">{stockString} Tokens LEFT </h3>}
+            {props.mint &&
+                <div className="mint-live">
+                    <img
+                        src="https://assets.website-files.com/621e34ea4b3095856cff1ff8/6226563ba9df1423307642dd_live-icon.svg"
+                        loading="lazy"
+                        alt=""
+                        className="mint-icon"
+                    />
+                    <div className="mint-live-p">
+                        Token Price: {ethPrice} $ETH
+                    </div>
                 </div>
-            </div>
+            }
         </div>
     );
 }
@@ -63,6 +66,7 @@ const MintSalesForm = (props: SalesProps) => {
     const dispatch = useAppDispatch();
     const contractModel = useContractModel();
     const mintPending = useMintPending();
+    const {isConnected} = useAccount();
     const mintError = useMintError();
 
     const [amount, setAmount] = useState<number>(1);
@@ -83,8 +87,15 @@ const MintSalesForm = (props: SalesProps) => {
 
     let isEligible;
     let selectText;
-    if (!isWhitelisted) {
+
+    if (!isConnected && props.mint !== contractModel?.publicMint) {
+        selectText = "Your wallet is not connected!";
+        isEligible = false;
+    } else if (!isWhitelisted) {
         selectText = "YOUR WALLET IS NOT WHITELISTED";
+        isEligible = false;
+    } else if (!props.mint) {
+        selectText = "Mint has not started yet";
         isEligible = false;
     } else if (hasStopped) {
         isEligible = false;
@@ -135,10 +146,11 @@ const MintSalesForm = (props: SalesProps) => {
                         {maxToken === 0 && <option value={0}>0</option>}
                     </select>
                 </div>
-
-                <div className="mint-buy-info">Phase #{props.phase}: Max. {maxTokensPerWallet} tokens per wallet and
-                    transaction
-                </div>
+                {!props.mint && <div className="mint-buy-info">Phase #{props.phase}: No tokens to mint</div>}
+                {props.mint &&
+                    <div className="mint-buy-info">Phase #{props.phase}: Max. {maxTokensPerWallet} tokens per wallet and
+                        transaction
+                    </div>}
                 {isEligible && <>
                     <h3 className="mint-h3">summary:</h3>
                     <div className="mint-buy-summary">

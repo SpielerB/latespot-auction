@@ -19,7 +19,6 @@ const ModalContent = () => {
 
     switch (displayState) {
         case DisplayState.PRE_MINT:
-            // TODO: Add actual page
             return <MintPage
                 phase={0}
                 mint={undefined}
