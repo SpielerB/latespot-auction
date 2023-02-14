@@ -57,7 +57,7 @@
 }
 
 .mint-buy {
-    width: 24em;
+    width: 22.36em;
 }
 
 .mint-amount {
@@ -74,6 +74,13 @@
 .mint-amount:disabled {
     color: #4F4F4F;
 }
+
+.mint-buttons {
+    text-align: center;
+    margin-right: auto;
+    margin-left: auto;
+}
+
 
 .mint-button-spacer {
     margin: 8px 0
