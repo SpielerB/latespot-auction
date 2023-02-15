@@ -1,7 +1,8 @@
 import React from "react";
 import ReactDOM from "react-dom";
-import {openModal} from '../store/application/ApplicationReducer';
+import {openModal, useDisplayState} from '../store/application/ApplicationReducer';
 import {useAppDispatch} from '../store/Store';
+import DisplayState from "../model/DisplayState";
 
 export interface ModalButtonProps extends ButtonProps {
     portalElement: Element | DocumentFragment;
@@ -21,9 +22,11 @@ const buttonClassNames = (mobile?: boolean) => {
 
 const OpenModalButton = ({mobile}: ButtonProps) => {
     const dispatch = useAppDispatch();
+    const displayState = useDisplayState();
+    let preMint = displayState === DisplayState.PRE_MINT;
 
     return (
-        <button className={buttonClassNames(mobile)} onClick={() => dispatch(openModal())}>
+        <button disabled={preMint} className={buttonClassNames(mobile)} onClick={() => dispatch(openModal())}>
             Mint Tokens
         </button>
     );
