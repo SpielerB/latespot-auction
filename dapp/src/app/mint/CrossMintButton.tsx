@@ -8,16 +8,15 @@ interface CrossMintProps {
     etherPrice: string;
     amount: number;
     disabled?: boolean;
-    hidden?: boolean;
 }
 
-const CrossMintButton = ({etherPrice, amount, disabled, hidden}: CrossMintProps) => {
+const CrossMintButton = ({etherPrice, disabled, amount}: CrossMintProps) => {
 
     const {address} = useAccount();
 
     const clientId = import.meta.env.VITE_CROSSMINT_CLIENT_ID;
     const environment = import.meta.env.VITE_CROSSMINT_ENVIRONMENT;
-    if (!clientId || !environment || hidden) return null;
+    if (!clientId || !environment) return null;
 
     return (
         <CrossmintPayButton
