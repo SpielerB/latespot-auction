@@ -272,7 +272,6 @@ contract AuctionV3Upgradeable is AuctionV3Base {
     * Requests randomness from the oracle
     */
     function requestReveal(string memory realURI_) public onlyOwner {
-        require(publicMintStopped, "Metadata may not be revealed until public mint is over");
         require(!revealed, "Metadata has already been revealed");
 
         __realURI = realURI_;
