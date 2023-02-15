@@ -18,12 +18,6 @@ const ModalContent = () => {
     const contractModel = useContractModel();
 
     switch (displayState) {
-        case DisplayState.PRE_MINT:
-            return <MintPage
-                phase={0}
-                mint={undefined}
-                title="pre wl Mint "
-            />;
         case DisplayState.PRIVATE_MINT:
             return <MintPage
                 phase={1}
@@ -34,7 +28,7 @@ const ModalContent = () => {
             return <MintPage
                 phase={1}
                 mint={contractModel?.privateMint}
-                title="All wl Tokens Minted!"
+                title="wl mint FINISHED"
             />;
         case DisplayState.PUBLIC_MINT:
             return <MintPage
@@ -43,11 +37,10 @@ const ModalContent = () => {
                 title="Public Mint"
             />;
         case DisplayState.MINT_FINISHED:
-            // TODO: Add actual page
             return <MintPage
                 phase={3}
                 mint={contractModel?.publicMint}
-                title="All Tokens Minted!"
+                title="MINT finished"
             />;
         default:
             return null;
