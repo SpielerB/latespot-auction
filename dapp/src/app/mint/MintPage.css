@@ -8,8 +8,7 @@
     margin-right: .571em;
 }
 
-.mint-mint-p {
-    color: #0cffcf;
+.mint-header-p {
     font-size: 1.143em;
     line-height: 1.4em;
     font-weight: 400;
@@ -83,6 +82,10 @@
 
 .option {
     color: white;
+}
+
+.text-disabled{
+    color: gray;
 }
 
 .mint-line {

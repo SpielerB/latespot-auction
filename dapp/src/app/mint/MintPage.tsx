@@ -41,13 +41,16 @@ const MintHeader = (props: AuctionProps) => {
             <h4 className="mint-h4">phase #{props.phase}</h4>
             <h1 className="mint-h1">{props.title}</h1>
             {isConnected && isWhitelisted &&
-                <div className="mint-mint-p">
+                <div className={props.mint?.isActive ? "mint-header-p mint-mint" : "mint-header-p"}>
                     You currently have {tokenInWallet} {tokenInWallet == 1 ? "token" : "tokens"}.
                 </div>
             }
-            {!props.mint && <h3 className="mint-h3">Revealing token amount soon </h3>}
-            {props.mint && <h3 className="mint-h3">{stockString} Tokens LEFT </h3>}
-            {props.mint &&
+            {props.mint?.isActive && <h3 className="mint-h3">{stockString} Tokens LEFT </h3>}
+            {contractModel?.publicMint.hasStopped &&
+                <h3 className="mint-h3 mint-mint">Thank you for your {tokenInWallet >= 1 ? "participation" : "interest"}!</h3>}
+            {contractModel?.privateMint.hasStopped && !contractModel?.publicMint.hasStarted &&
+                <h3 className="mint-h3 mint-mint">public mint will start any minute!</h3>}
+            {props.mint?.isActive &&
                 <div className="mint-live">
                     <img
                         src="https://assets.website-files.com/621e34ea4b3095856cff1ff8/6226563ba9df1423307642dd_live-icon.svg"
@@ -81,8 +84,10 @@ const MintSalesForm = (props: SalesProps) => {
         maximumFractionDigits: 3
     });
 
-    const isWhitelisted = contractModel?.whitelisted || contractModel?.publicMint.hasStarted;
-    const hasStopped = props.mint?.hasStopped ?? false;
+    const privateHasStopped = contractModel?.privateMint.hasStopped ?? false;
+    const publicHasStopped = contractModel?.publicMint.hasStopped ?? false;
+    const publicHasStarted = contractModel?.publicMint.hasStarted ?? false;
+    const isWhitelisted = contractModel?.whitelisted || publicHasStarted;
     const maxTokensPerWallet = props.mint?.tokenLimit ?? 0;
     const tokenCount = props.mint?.walletTokens ?? 0;
     const maxToken = maxTokensPerWallet - tokenCount;
@@ -90,18 +95,18 @@ const MintSalesForm = (props: SalesProps) => {
     let isEligible;
     let selectText;
 
-    if (!isConnected && props.mint !== contractModel?.publicMint) {
+    if (privateHasStopped && !publicHasStarted) {
+        isEligible = false;
+        selectText = "whitelist MINT FINISHED";
+    } else if (privateHasStopped && publicHasStopped) {
+        isEligible = false;
+        selectText = "public MINT FINISHED!";
+    } else if (!isConnected && !publicHasStarted) {
         selectText = "Your wallet is not connected!";
         isEligible = false;
     } else if (!isWhitelisted) {
         selectText = "YOUR WALLET IS NOT WHITELISTED";
         isEligible = false;
-    } else if (!props.mint) {
-        selectText = "Mint has not started yet";
-        isEligible = false;
-    } else if (hasStopped) {
-        isEligible = false;
-        selectText = "SOLD OUT!";
     } else if (maxTokensPerWallet === tokenCount) {
         selectText = "MAXIMUM NUMBER OF TOKENS REACHED";
         isEligible = false;
@@ -148,11 +153,9 @@ const MintSalesForm = (props: SalesProps) => {
                         {maxToken === 0 && <option value={0}>0</option>}
                     </select>
                 </div>
-                {!props.mint && <div className="mint-buy-info">Phase #{props.phase}: No tokens to mint</div>}
-                {props.mint &&
-                    <div className="mint-buy-info">Phase #{props.phase}: Max. {maxTokensPerWallet} tokens per wallet and
-                        transaction
-                    </div>}
+                <div className="mint-buy-info">Phase #{props.phase}: Max. {maxTokensPerWallet} tokens per wallet and
+                    transaction
+                </div>
                 {isEligible && <>
                     <h3 className="mint-h3">summary:</h3>
                     <div className="mint-buy-summary">
@@ -166,12 +169,13 @@ const MintSalesForm = (props: SalesProps) => {
                         onMint={() => setShowInfo(true)}
                         mintDisabled={!isEligible || mintPending}
                     />
-                    <div hidden={!isEligible} className="mint-button-spacer">or</div>
+                    <div
+                        className={!isEligible || mintPending ? "mint-button-spacer text-disabled" : "mint-button-spacer"}>or
+                    </div>
                     <CrossMintButton
                         amount={amount}
-                        hidden={!isEligible}
                         etherPrice={ethers.utils.formatEther(price.mul(amount).toString())}
-                        disabled={mintPending}
+                        disabled={!isEligible || mintPending}
                     />
                 </div>
             </div>
