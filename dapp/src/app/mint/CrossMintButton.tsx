@@ -16,7 +16,7 @@ const CrossMintButton = ({etherPrice, disabled, amount}: CrossMintProps) => {
 
     const clientId = import.meta.env.VITE_CROSSMINT_CLIENT_ID;
     const environment = import.meta.env.VITE_CROSSMINT_ENVIRONMENT;
-    if (!clientId || !environment) return null;
+    if (!clientId) return null;
 
     return (
         <CrossmintPayButton
