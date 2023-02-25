@@ -1,6 +1,5 @@
 import ModalPage from './modal/ModalPage';
 import React from 'react';
-
 import './App.css'
 import {useDisplayState} from '../store/application/ApplicationReducer';
 import DisplayState from "../model/DisplayState";
@@ -22,25 +21,25 @@ const ModalContent = () => {
             return <MintPage
                 phase={1}
                 mint={contractModel?.privateMint}
-                title="Whitelist Mint"
+                title="whitelist mint"
             />;
         case DisplayState.PRE_PUBLIC_MINT:
             return <MintPage
                 phase={1}
                 mint={contractModel?.privateMint}
-                title="wl mint FINISHED"
+                title="wl mint finished"
             />;
         case DisplayState.PUBLIC_MINT:
             return <MintPage
                 phase={2}
                 mint={contractModel?.publicMint}
-                title="Public Mint"
+                title="public mint"
             />;
         case DisplayState.MINT_FINISHED:
             return <MintPage
                 phase={3}
                 mint={contractModel?.publicMint}
-                title="MINT finished"
+                title="mint finished"
             />;
         default:
             return null;

@@ -11,8 +11,6 @@ interface InfoDialogProps {
     open: boolean;
     onConfirm?: () => void;
     onCancel?: () => void;
-    confirmButton?: JSX.Element;
-
 }
 
 const InfoDialog = (props: PropsWithChildren<InfoDialogProps>) => {
@@ -30,10 +28,7 @@ const InfoDialog = (props: PropsWithChildren<InfoDialogProps>) => {
     if (!props.open) return null;
 
     return (
-        <div
-            className="dialog-overlay"
-            onClick={props.onCancel}
-        >
+        <div className="dialog-overlay" onClick={props.onCancel}>
             <div
                 className="dialog-box"
                 onClick={(event) => event.stopPropagation()}
@@ -53,23 +48,18 @@ const InfoDialog = (props: PropsWithChildren<InfoDialogProps>) => {
                         className="dialog-icon"
                     />
                 </div>
-                <div className="dialog-content">
-                    {props.children}
-                </div>
+                <div className="dialog-content">{props.children}</div>
                 <div className="dialog-buttons">
-                    {props.confirmButton ??
-                        <button
-                            className="dialog-button"
-                            onClick={props.onConfirm}
-                        >
-                            {props.confirmLabel ?? "Confirm"}
-                        </button>
-                    }
+                    <button
+                        className="dialog-button"
+                        onClick={props.onConfirm}
+                    >
+                        {props.confirmLabel ?? "Confirm"}
+                    </button>
                     {props.cancelLabel &&
                         <button className="dialog-button" onClick={props.onCancel}>{props.cancelLabel}</button>}
                 </div>
             </div>
-
         </div>);
 }
 export default InfoDialog;
