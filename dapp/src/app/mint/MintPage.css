@@ -39,8 +39,9 @@
 
 .mint-buy-c {
     margin-top: 2.65em;
-    width: 42%;
+    width: initial;
     margin-left: auto;
+    margin-right: auto;
 }
 
 .mint-buy {
@@ -86,6 +87,7 @@
 
 .mint-header {
     margin-right: 1em;
+    width: initial;
 }
 
 .mint-buy-h3 {
@@ -98,7 +100,20 @@
 
 @media only screen and (max-width: 1100px) {
     .mint-buy-c {
-        width: 52%;
-        margin-left: initial;
+        width: 50%;
+    }
+
+    .mint-header {
+        width: 50%;
+    }
+}
+
+@media only screen and (max-width: 767px) {
+    .mint-buy-c {
+        width: 100%;
+    }
+
+    .mint-header {
+        width: 100%;
     }
 }
